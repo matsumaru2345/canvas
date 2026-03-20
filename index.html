@@ -491,15 +491,39 @@ textarea.fi{resize:vertical;min-height:70px;}
 
     <!-- AI tab -->
     <div id="tab-ai">
-      <div class="ai-parse-area">
-        <div class="ai-badge">
+      <!-- STEP 1 -->
+      <div style="background:var(--accent-bg);border:1.5px dashed rgba(29,78,216,.3);border-radius:10px;padding:14px;margin-bottom:12px;">
+        <div class="ai-badge" style="margin-bottom:8px;">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1l1.8 4.2L14 8l-4.2 1.8L8 14l-1.8-4.2L2 8l4.2-1.8z"/></svg>
-          URL またはコンペの説明文を貼り付けてください
-          <div class="ai-spinner" id="ai-spinner"></div>
+          STEP 1 — コンペの情報を入力してください
         </div>
-        <textarea id="ai-input" placeholder="例）https://newhope.g-mark.org/&#10;&#10;または、コンペの説明文をそのまま貼り付けてOK。AIが自動でフォームに整理します。" style="height:90px;"></textarea>
+        <textarea id="ai-source-input" class="fi" placeholder="コンペのURLや説明文をここに貼り付けてください&#10;例）https://newhope.g-mark.org/" style="min-height:72px;background:#fff;"></textarea>
+        <button class="btn btn-accent" style="width:100%;margin-top:8px;" onclick="generatePrompt()">✦ プロンプトを生成する</button>
       </div>
-      <button class="btn btn-accent" style="width:100%;" onclick="runAIParse()">✦ AIで解析して自動入力</button>
+
+      <!-- STEP 2 -->
+      <div id="ai-step2" style="display:none;">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="ai-badge">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1l1.8 4.2L14 8l-4.2 1.8L8 14l-1.8-4.2L2 8l4.2-1.8z"/></svg>
+              STEP 2 — このプロンプトをClaudeに貼り付けて実行
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="copyPrompt()">コピー</button>
+          </div>
+          <textarea id="ai-prompt-output" class="fi" readonly style="min-height:120px;font-size:11px;background:#fff;line-height:1.5;"></textarea>
+        </div>
+
+        <!-- STEP 3 -->
+        <div style="background:var(--green-bg);border:1.5px dashed rgba(22,163,74,.3);border-radius:10px;padding:14px;">
+          <div class="ai-badge" style="color:var(--green);margin-bottom:8px;">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/></svg>
+            STEP 3 — Claudeの返答（JSON）をここに貼り付けてください
+          </div>
+          <textarea id="ai-json-input" class="fi" placeholder='{"name":"...", "type":"コンペ", ...}' style="min-height:80px;background:#fff;font-size:12px;"></textarea>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="applyJSON()">✦ フォームに自動入力</button>
+        </div>
+      </div>
     </div>
 
     <!-- Basic tab -->
@@ -659,45 +683,47 @@ function launchConfetti(){
   draw();
 }
 
-// ─── AI PARSE ───
-async function runAIParse(){
-  const input = document.getElementById('ai-input').value.trim();
-  if(!input){ toast('URLまたはテキストを入力してください'); return; }
-  const spinner = document.getElementById('ai-spinner');
-  spinner.style.display='block';
-  document.querySelector('[onclick="runAIParse()"]').disabled=true;
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
-        system:`あなたはデザインコンペの情報を構造化するアシスタントです。
+// ─── AI PARSE（プロンプト生成 → JSON貼り付け方式）───
+const AI_SYSTEM_PROMPT = `あなたはデザインコンペの情報を構造化するアシスタントです。
 与えられたテキストやURLの説明からコンペ情報を抽出し、必ず以下のJSON形式のみで返してください。
-余計な説明文やコードブロック記号は一切つけないでください。
+余計な説明文やコードブロック記号（\`\`\`json など）は一切つけず、JSONだけを返してください。
+
 {
   "name": "イベント名",
   "type": "コンペ or 個展 or ワークショップ or その他",
-  "desc": "概要（2〜3文）",
+  "desc": "概要（2〜3文でわかりやすく）",
   "start": "YYYY-MM-DD or 空文字",
-  "end": "YYYY-MM-DD or 空文字（応募締め切り）",
+  "end": "YYYY-MM-DD or 空文字（応募締め切り日）",
   "location": "場所 or オンライン",
   "organizer": "主催者名",
-  "fee": "参加費",
-  "prize": "賞金・賞品",
+  "fee": "参加費（例：無料）",
+  "prize": "賞金・賞品（例：最優秀賞 30万円）",
   "category": "応募カテゴリ",
   "eligibility": "応募資格",
   "criteria": "審査基準やテーマ",
-  "format": "提出物・フォーマット要件",
-  "url": "公式URL（入力にURLがあれば）"
-}`,
-        messages:[{role:'user',content:input}]
-      })
-    });
-    const d = await res.json();
-    const text = d.content?.find(c=>c.type==='text')?.text || '';
-    const obj = JSON.parse(text.trim());
-    // 各フォームに流し込む
+  "format": "提出物・フォーマット要件（例：A3 PDF、JPG画像）",
+  "url": "公式URL"
+}`;
+
+function generatePrompt(){
+  const source = document.getElementById('ai-source-input').value.trim();
+  if(!source){ toast('URLまたはテキストを入力してください'); return; }
+  const prompt = `${AI_SYSTEM_PROMPT}\n\n---\n以下の情報を構造化してください：\n\n${source}`;
+  document.getElementById('ai-prompt-output').value = prompt;
+  document.getElementById('ai-step2').style.display = 'block';
+  toast('プロンプトを生成しました！Claudeに貼り付けてください');
+}
+
+function copyPrompt(){
+  const text = document.getElementById('ai-prompt-output').value;
+  navigator.clipboard.writeText(text).then(()=>toast('コピーしました！'));
+}
+
+function applyJSON(){
+  const raw = document.getElementById('ai-json-input').value.trim();
+  if(!raw){ toast('JSONを貼り付けてください'); return; }
+  try {
+    const obj = JSON.parse(raw);
     if(obj.name)        document.getElementById('ev-name').value=obj.name;
     if(obj.type)        document.getElementById('ev-type').value=obj.type;
     if(obj.desc)        document.getElementById('ev-desc').value=obj.desc;
@@ -713,12 +739,9 @@ async function runAIParse(){
     if(obj.criteria)    document.getElementById('ev-criteria').value=obj.criteria;
     if(obj.format)      document.getElementById('ev-format').value=obj.format;
     switchEvTab('basic');
-    toast('✦ AIが情報を整理しました！内容を確認してください');
+    toast('✦ フォームに自動入力しました！内容を確認してください');
   } catch(e) {
-    toast('解析に失敗しました。テキストを確認してください');
-  } finally {
-    spinner.style.display='none';
-    document.querySelector('[onclick="runAIParse()"]').disabled=false;
+    toast('JSONの形式が正しくありません。Claudeの返答をそのまま貼り付けてください');
   }
 }
 
@@ -1231,6 +1254,73 @@ function deleteTask(key){
   if(!confirm('削除しますか？')) return;
   fbRemove(`tasks/${key}`);
   toast('削除しました'); closeOv('ov-detail');
+}
+
+// ─── AI PROMPT GENERATOR ───
+function generatePrompt(){
+  const source = document.getElementById('ai-source-input').value.trim();
+  if(!source){ toast('コンペの情報を入力してください'); return; }
+
+  const prompt = `以下のコンペ・イベント情報を読んで、指定のJSON形式に整理してください。
+情報が見当たらない項目は空文字("")にしてください。
+必ずJSONのみを返してください。説明文やコードブロック記号は不要です。
+
+【JSON形式】
+{
+  "name": "イベント名",
+  "type": "コンペ or 個展 or ワークショップ or その他",
+  "desc": "概要を2〜3文で",
+  "start": "YYYY-MM-DD形式、なければ空文字",
+  "end": "YYYY-MM-DD形式（応募締め切り）、なければ空文字",
+  "location": "場所またはオンライン",
+  "organizer": "主催者名",
+  "fee": "参加費",
+  "prize": "賞金・賞品",
+  "category": "応募カテゴリ",
+  "eligibility": "応募資格",
+  "criteria": "審査基準やテーマ",
+  "format": "提出物・フォーマット要件",
+  "url": "公式URL"
+}
+
+【コンペ情報】
+${source}`;
+
+  document.getElementById('ai-prompt-output').value = prompt;
+  document.getElementById('ai-step2').style.display = 'block';
+  toast('プロンプトを生成しました！Claudeに貼り付けてください');
+}
+
+function copyPrompt(){
+  const text = document.getElementById('ai-prompt-output').value;
+  navigator.clipboard.writeText(text).then(()=>toast('コピーしました！'));
+}
+
+function applyJSON(){
+  const raw = document.getElementById('ai-json-input').value.trim();
+  if(!raw){ toast('JSONを貼り付けてください'); return; }
+  try {
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const obj = JSON.parse(clean);
+    if(obj.name)        document.getElementById('ev-name').value=obj.name;
+    if(obj.type)        document.getElementById('ev-type').value=obj.type;
+    if(obj.desc)        document.getElementById('ev-desc').value=obj.desc;
+    if(obj.start)       document.getElementById('ev-start').value=obj.start;
+    if(obj.end)         document.getElementById('ev-end').value=obj.end;
+    if(obj.location)    document.getElementById('ev-loc').value=obj.location;
+    if(obj.url)         document.getElementById('ev-url').value=obj.url;
+    if(obj.organizer)   document.getElementById('ev-organizer').value=obj.organizer;
+    if(obj.fee)         document.getElementById('ev-fee').value=obj.fee;
+    if(obj.prize)       document.getElementById('ev-prize').value=obj.prize;
+    if(obj.category)    document.getElementById('ev-category').value=obj.category;
+    if(obj.eligibility) document.getElementById('ev-eligibility').value=obj.eligibility;
+    if(obj.criteria)    document.getElementById('ev-criteria').value=obj.criteria;
+    if(obj.format)      document.getElementById('ev-format').value=obj.format;
+    switchEvTab('basic');
+    toast('✦ フォームに自動入力しました！内容を確認してください');
+  } catch(e) {
+    toast('JSONの形式が正しくありません。もう一度コピーしてください');
+  }
 }
 
 // ─── utils ───
