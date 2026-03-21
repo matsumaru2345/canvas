@@ -102,6 +102,8 @@ function initListeners() {
   onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
   onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
+  onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); renderAll(); });
+  onValue(ref(db,'weeklyLogs'),  snap => { window._data.weeklyLogs={}; snap.forEach(c=>window._data.weeklyLogs[c.key]=c.val()); renderAll(); });
   document.getElementById('sync-dot').classList.add('live');
 }
 </script>
@@ -393,6 +395,40 @@ textarea.fi{resize:vertical;min-height:70px;}
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
+/* ── Weekly Work ── */
+.wg-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
+.wg-card:hover{box-shadow:var(--shadow-md);}
+.wg-stripe{height:4px;}
+.wg-body{padding:16px;}
+.wg-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.wg-emoji{font-size:22px;line-height:1;}
+.wg-info{flex:1;}
+.wg-title{font-size:14px;font-weight:500;line-height:1.3;}
+.wg-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.wg-prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;font-family:var(--font-s);}
+.wg-prog-bar{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+.wg-prog-fill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.wg-controls{display:flex;align-items:center;justify-content:space-between;}
+.wg-counter{display:flex;align-items:center;gap:10px;}
+.wg-count-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1;}
+.wg-count-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
+.wg-count-val{font-family:var(--font-s);font-size:22px;font-weight:300;min-width:32px;text-align:center;}
+.wg-done-badge{background:var(--green-bg);color:var(--green);border:1px solid rgba(22,163,74,.2);border-radius:20px;font-size:11px;padding:3px 10px;font-family:var(--font-s);font-weight:500;}
+.wg-delete-btn{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:12px;padding:4px 6px;border-radius:5px;transition:all .12s;}
+.wg-delete-btn:hover{color:var(--red);background:var(--red-bg);}
+/* team view */
+.wg-member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.wg-member-row:last-child{border-bottom:none;}
+.wg-member-prog{flex:1;}
+.wg-member-bar{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-top:4px;}
+/* color pick */
+.color-pick.active-color{border-color:var(--text) !important;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text);}
+/* history */
+.wg-hist-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;margin-bottom:8px;}
+.wg-hist-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.wg-hist-label{font-size:13px;font-weight:500;}
+.wg-hist-val{font-size:12px;color:var(--muted);font-family:var(--font-s);}
+
 /* ── Bottom nav (mobile) ── */
 .bottom-nav{display:none;}
 
@@ -610,6 +646,10 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
         <span>スケジュール</span>
       </button>
+      <button class="nav-item" onclick="showPage('weekly')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
+        <span>週間ワーク</span>
+      </button>
       <div class="nav-sec" style="margin-top:8px;">管理</div>
       <button class="nav-item" id="nav-usermgmt" onclick="showPage('usermgmt')" style="display:none;">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
@@ -710,6 +750,36 @@ textarea.fi{resize:vertical;min-height:70px;}
       <div style="padding:26px" id="schedule"></div>
     </div>
 
+    <!-- Weekly Work -->
+    <div id="page-weekly" class="page">
+      <div class="topbar">
+        <span class="topbar-title">週間ワーク</span>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openWeeklyModal()">＋ 目標を追加</button>
+        </div>
+      </div>
+      <div style="padding:20px">
+        <!-- 今週の期間 & リセット情報 -->
+        <div id="weekly-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-family:var(--font-s);font-size:13px;font-weight:500;" id="weekly-range-label">今週</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="weekly-reset-label">次のリセットまで —</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="chip active" id="wv-personal" onclick="setWeeklyView('personal',this)">自分</button>
+            <button class="chip" id="wv-team" onclick="setWeeklyView('team',this)">チーム全員</button>
+          </div>
+        </div>
+        <!-- Goals grid -->
+        <div id="weekly-goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
+        <!-- History -->
+        <div style="margin-top:28px;">
+          <div class="sec-head"><h2>先週の記録</h2></div>
+          <div id="weekly-history"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- User Management -->
     <div id="page-usermgmt" class="page">
       <div class="topbar">
@@ -780,6 +850,10 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
       タスク
     </button>
+    <button class="bn-item" id="bn-weekly" onclick="showPage('weekly')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
+      週間
+    </button>
     <button class="bn-item" id="bn-schedule" onclick="showPage('schedule')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
       予定
@@ -801,6 +875,41 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
       ログアウト
     </button>
+  </div>
+</div>
+
+<!-- ── WEEKLY GOAL MODAL ── -->
+<div class="overlay" id="ov-weekly">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="wg-modal-ttl">週間目標を追加</div>
+    <div class="fg"><label class="fl">目標の名前</label><input class="fi" id="wg-name" placeholder="例：スケッチ、リサーチ、模写"></div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">単位</label><input class="fi" id="wg-unit" placeholder="例：枚、時間、冊"></div>
+      <div class="fg"><label class="fl">週の目標数</label><input type="number" class="fi" id="wg-target" placeholder="5" min="1" max="999"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">アイコン（絵文字）</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;" id="wg-emoji-picker">
+        🎨 ✏️ 📚 🔍 💡 🖼️ 📐 🎯 💻 📝 🏃 🎵
+      </div>
+      <input class="fi" id="wg-emoji" placeholder="🎨" maxlength="2" style="width:64px;text-align:center;font-size:20px;margin-top:6px;">
+    </div>
+    <div class="fg">
+      <label class="fl">カラー</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="wg-color-picker">
+        <button onclick="selectWgColor('#1d4ed8',this)" style="width:28px;height:28px;border-radius:50%;background:#1d4ed8;border:2px solid transparent;cursor:pointer;" class="color-pick active-color"></button>
+        <button onclick="selectWgColor('#7c3aed',this)" style="width:28px;height:28px;border-radius:50%;background:#7c3aed;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
+        <button onclick="selectWgColor('#0d9488',this)" style="width:28px;height:28px;border-radius:50%;background:#0d9488;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
+        <button onclick="selectWgColor('#d97706',this)" style="width:28px;height:28px;border-radius:50%;background:#d97706;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
+        <button onclick="selectWgColor('#dc2626',this)" style="width:28px;height:28px;border-radius:50%;background:#dc2626;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
+        <button onclick="selectWgColor('#be185d',this)" style="width:28px;height:28px;border-radius:50%;background:#be185d;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
+      </div>
+      <input type="hidden" id="wg-color" value="#1d4ed8">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-weekly')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveWeeklyGoal()">追加</button>
+    </div>
   </div>
 </div>
 
@@ -924,7 +1033,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{} };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{} };
 window._me   = null;
 window._myRole = 'member';
 
@@ -1020,6 +1129,7 @@ function renderAll(){
   if(_activePage==='tasks')    renderTasks();
   if(_activePage==='schedule') renderSchedule();
   if(_activePage==='usermgmt') renderUserMgmt();
+  if(_activePage==='weekly')    renderWeekly();
   renderNotifs();
 }
 
@@ -1794,6 +1904,219 @@ function openOv(id){ document.getElementById(id).classList.add('open'); }
 function closeOv(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
 
+
+// ─── WEEKLY WORK ───
+let _weeklyView = 'personal';
+
+function getWeekKey(date) {
+  const d = date || new Date();
+  const day = d.getDay(); // 0=Sun
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const mon = new Date(d.setDate(diff));
+  return mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
+}
+
+function getThisWeekKey() { return getWeekKey(new Date()); }
+
+function getLastWeekKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return getWeekKey(d);
+}
+
+function daysUntilMonday() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 1 ? 7 : (8 - day) % 7;
+  return diff;
+}
+
+function setWeeklyView(v, el) {
+  _weeklyView = v;
+  document.querySelectorAll('#weekly-header .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderWeekly();
+}
+
+function renderWeekly() {
+  const weekKey = getThisWeekKey();
+  const d = new Date();
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - (d.getDay()===0?6:d.getDay()-1));
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  const fmt = dt => (dt.getMonth()+1) + '/' + dt.getDate();
+  const rl = document.getElementById('weekly-range-label');
+  const rr = document.getElementById('weekly-reset-label');
+  if(rl) rl.textContent = fmt(mon) + ' 〜 ' + fmt(sun);
+  if(rr) rr.textContent = '月曜日にリセット（あと' + daysUntilMonday() + '日）';
+
+  const goals = window._data.weeklyGoals;
+  const logs  = window._data.weeklyLogs;
+  const myId  = window._me?.uid;
+  const grid  = document.getElementById('weekly-goals-grid');
+  if(!grid) return;
+
+  if(!goals.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⏱</div><p>まだ週間目標がありません。<br>「＋ 目標を追加」で作ってみよう！</p></div>';
+  } else if(_weeklyView === 'personal') {
+    const myGoals = goals.filter(g => g.uid === myId);
+    if(!myGoals.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">＋</div><p>自分の目標がまだありません</p></div>';
+    } else {
+      grid.innerHTML = myGoals.map(g => wgCardHTML(g, weekKey, logs, myId)).join('');
+    }
+  } else {
+    // team view — group by goal name across all users
+    const users = window._data.users;
+    grid.innerHTML = goals.map(g => {
+      const logKey = g.uid + '_' + weekKey + '_' + g._key;
+      const cur = logs[logKey]?.count || 0;
+      const pct = Math.min(100, Math.round(cur / g.target * 100));
+      const u = users[g.uid];
+      const avHTML = u?.photo
+        ? `<img src="${u.photo}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`
+        : `<div style="width:22px;height:22px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;">${initials(u?.name||'?')}</div>`;
+      return `<div class="wg-card">
+        <div class="wg-stripe" style="background:${g.color||'#1d4ed8'}"></div>
+        <div class="wg-body">
+          <div class="wg-header">
+            <span class="wg-emoji">${g.emoji||'🎨'}</span>
+            <div class="wg-info">
+              <div class="wg-title">${g.name}</div>
+              <div class="wg-sub">目標: ${g.target} ${g.unit}</div>
+            </div>
+            ${avHTML}
+          </div>
+          <div class="wg-prog-row"><span>${u?.name||'—'}</span><span>${cur} / ${g.target} ${g.unit}</span></div>
+          <div class="wg-prog-bar"><div class="wg-prog-fill" style="width:${pct}%;background:${g.color||'#1d4ed8'}"></div></div>
+          ${pct>=100?'<div class="wg-done-badge" style="display:inline-block;">✓ 達成！</div>':''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // History (last week)
+  renderWeeklyHistory();
+}
+
+function wgCardHTML(g, weekKey, logs, myId) {
+  const logKey = myId + '_' + weekKey + '_' + g._key;
+  const cur = logs[logKey]?.count || 0;
+  const pct = Math.min(100, Math.round(cur / g.target * 100));
+  const done = pct >= 100;
+  return `<div class="wg-card">
+    <div class="wg-stripe" style="background:${g.color||'#1d4ed8'}"></div>
+    <div class="wg-body">
+      <div class="wg-header">
+        <span class="wg-emoji">${g.emoji||'🎨'}</span>
+        <div class="wg-info">
+          <div class="wg-title">${g.name}</div>
+          <div class="wg-sub">週の目標: ${g.target} ${g.unit}</div>
+        </div>
+        <button class="wg-delete-btn" onclick="deleteWeeklyGoal('${g._key}')">✕</button>
+      </div>
+      <div class="wg-prog-row">
+        <span>${done?'🎉 達成！':'進捗'}</span>
+        <span style="font-weight:500;color:${done?'var(--green)':'var(--text)'};">${cur} / ${g.target} ${g.unit}</span>
+      </div>
+      <div class="wg-prog-bar">
+        <div class="wg-prog-fill" style="width:${pct}%;background:${done?'var(--green)':g.color||'#1d4ed8'}"></div>
+      </div>
+      <div class="wg-controls">
+        <div class="wg-counter">
+          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','${weekKey}',-1)">−</button>
+          <span class="wg-count-val">${cur}</span>
+          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','${weekKey}',1)" style="${done?'background:var(--green-bg);color:var(--green);border-color:rgba(22,163,74,.3);':''}">＋</button>
+        </div>
+        ${done?'<span class="wg-done-badge">✓ 達成！</span>':''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateWeeklyCount(goalKey, weekKey, delta) {
+  const myId = window._me?.uid;
+  if(!myId) return;
+  const logKey = myId + '_' + weekKey + '_' + goalKey;
+  const cur = window._data.weeklyLogs[logKey]?.count || 0;
+  const goal = window._data.weeklyGoals.find(g=>g._key===goalKey);
+  const newVal = Math.max(0, cur + delta);
+  const wasNotDone = cur < (goal?.target||99);
+  const nowDone = newVal >= (goal?.target||99);
+  fbSet('weeklyLogs/' + logKey, {uid:myId, goalKey, weekKey, count:newVal, updatedAt:Date.now()});
+  if(wasNotDone && nowDone) { toast('🎉 週間目標達成！', 'complete'); }
+}
+
+function renderWeeklyHistory() {
+  const lastKey = getLastWeekKey();
+  const logs = window._data.weeklyLogs;
+  const myId = window._me?.uid;
+  const hist = document.getElementById('weekly-history');
+  if(!hist) return;
+
+  const myGoals = window._data.weeklyGoals.filter(g=>g.uid===myId);
+  if(!myGoals.length) { hist.innerHTML = ''; return; }
+
+  const rows = myGoals.map(g => {
+    const logKey = myId + '_' + lastKey + '_' + g._key;
+    const count = logs[logKey]?.count || 0;
+    const pct = Math.min(100, Math.round(count / g.target * 100));
+    return `<div class="wg-hist-card">
+      <div class="wg-hist-row">
+        <span class="wg-hist-label">${g.emoji||'🎨'} ${g.name}</span>
+        <span class="wg-hist-val">${count} / ${g.target} ${g.unit} (${pct}%)</span>
+      </div>
+      <div class="wg-prog-bar">
+        <div class="wg-prog-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':g.color||'#1d4ed8'}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  hist.innerHTML = rows || '<div style="font-size:13px;color:var(--muted);">先週の記録がありません</div>';
+}
+
+function openWeeklyModal() {
+  document.getElementById('wg-name').value='';
+  document.getElementById('wg-unit').value='';
+  document.getElementById('wg-target').value='';
+  document.getElementById('wg-emoji').value='🎨';
+  document.getElementById('wg-color').value='#1d4ed8';
+  document.querySelectorAll('.color-pick').forEach(b=>b.classList.remove('active-color'));
+  document.querySelector('.color-pick').classList.add('active-color');
+  // emoji picker clicks
+  document.getElementById('wg-emoji-picker').onclick = e => {
+    const txt = e.target.textContent?.trim();
+    if(txt && txt.length <= 2) document.getElementById('wg-emoji').value = txt;
+  };
+  openOv('ov-weekly');
+}
+
+function selectWgColor(color, el) {
+  document.getElementById('wg-color').value = color;
+  document.querySelectorAll('.color-pick').forEach(b=>b.classList.remove('active-color'));
+  el.classList.add('active-color');
+}
+
+function saveWeeklyGoal() {
+  const name = document.getElementById('wg-name').value.trim();
+  if(!name) { toast('目標の名前を入力してください'); return; }
+  const unit   = document.getElementById('wg-unit').value.trim() || '回';
+  const target = parseInt(document.getElementById('wg-target').value) || 5;
+  const emoji  = document.getElementById('wg-emoji').value.trim() || '🎨';
+  const color  = document.getElementById('wg-color').value || '#1d4ed8';
+  const myId   = window._me?.uid;
+  if(!myId) return;
+  fbPush('weeklyGoals', {name, unit, target, emoji, color, uid:myId, createdAt:Date.now()});
+  toast('週間目標を追加しました！');
+  closeOv('ov-weekly');
+}
+
+function deleteWeeklyGoal(key) {
+  if(!confirm('この目標を削除しますか？')) return;
+  fbRemove('weeklyGoals/' + key);
+  toast('削除しました');
+}
+
 function toggleMobileMenu(){
   const menu = document.getElementById('mobile-menu');
   menu.classList.toggle('open');
@@ -1818,12 +2141,12 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={dash:0,events:1,tasks:2,schedule:3,usermgmt:4}[id];
+  const idx={dash:0,events:1,tasks:2,schedule:3,weekly:4,usermgmt:5}[id];
   const navItems=document.querySelectorAll('.nav-item');
   if(navItems[idx]) navItems[idx].classList.add('active');
   // sync bottom nav
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule'};
+  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',weekly:'bn-weekly'};
   if(bnMap[id]) document.getElementById(bnMap[id])?.classList.add('active');
   _activePage=id; renderAll();
 }
