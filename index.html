@@ -102,6 +102,7 @@ function initListeners() {
   onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
   onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
+  onValue(ref(db,'themeProposals'), snap => { window._data.themeProposals=[]; snap.forEach(c=>window._data.themeProposals.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'habitThemes'), snap => { window._data.habitThemes=[]; snap.forEach(c=>window._data.habitThemes.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'notes'), snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); renderAll(); });
@@ -420,6 +421,19 @@ textarea.fi{resize:vertical;min-height:70px;}
 .share-card-tag{display:inline-flex;align-items:center;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--accent-bg);color:var(--accent);font-family:var(--font-s);}
 .share-card-delete{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:11px;padding:3px 6px;border-radius:4px;transition:all .12s;margin-left:auto;}
 .share-card-delete:hover{color:var(--red);background:var(--red-bg);}
+/* ── Theme Proposals ── */
+.proposal-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;transition:box-shadow .15s;}
+.proposal-card:hover{box-shadow:var(--shadow-md);}
+.proposal-card.adopted{border-color:rgba(22,163,74,.3);background:var(--green-bg);}
+.proposal-emoji{font-size:24px;flex-shrink:0;line-height:1;margin-top:2px;}
+.proposal-body{flex:1;min-width:0;}
+.proposal-title{font-size:13px;font-weight:500;margin-bottom:2px;}
+.proposal-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.proposal-meta{font-size:10px;color:var(--muted2);margin-top:4px;display:flex;align-items:center;gap:6px;}
+.proposal-actions{display:flex;gap:5px;flex-shrink:0;align-items:center;}
+.vote-btn{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:12px;transition:all .12s;font-family:var(--font-j);}
+.vote-btn:hover{background:var(--accent-bg);border-color:rgba(29,78,216,.25);color:var(--accent);}
+.vote-btn.voted{background:var(--accent-bg);border-color:rgba(29,78,216,.3);color:var(--accent);font-weight:500;}
 /* ── Notes ── */
 /* Block Editor (Notion-style) */
 .block-editor{outline:none;min-height:200px;padding:4px 0;}
@@ -930,7 +944,9 @@ textarea.fi{resize:vertical;min-height:70px;}
       <div style="padding:16px 16px 20px;">
 
         <!-- ① 今月のテーマ -->
-        <div id="habit-theme-section" style="margin-bottom:20px;"></div>
+        <div id="habit-theme-section" style="margin-bottom:12px;"></div>
+        <!-- テーマ提案エリア -->
+        <div id="habit-proposals-section" style="margin-bottom:20px;"></div>
 
         <!-- ② 今週の習慣進捗 -->
         <div style="margin-bottom:20px;">
@@ -1147,6 +1163,29 @@ textarea.fi{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<!-- ── PROPOSAL MODAL ── -->
+<div class="overlay" id="ov-proposal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">テーマを提案する</div>
+    <div class="fg">
+      <label class="fl">提案するテーマ</label>
+      <input class="fi" id="proposal-title" placeholder="例：カフェや外の風景をスケッチしよう">
+    </div>
+    <div class="fg">
+      <label class="fl">一言メモ（なぜそのテーマか、省略可）</label>
+      <textarea class="fi" id="proposal-desc" placeholder="例：外に出るきっかけになると思って！" style="min-height:56px;"></textarea>
+    </div>
+    <div class="fg">
+      <label class="fl">アイコン絵文字</label>
+      <input class="fi" id="proposal-emoji" placeholder="🌿" maxlength="2" style="width:64px;text-align:center;font-size:20px;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-proposal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveProposal()">提案する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── THEME MODAL (admin only) ── -->
 <div class="overlay" id="ov-theme">
   <div class="modal" style="max-width:440px;">
@@ -1325,7 +1364,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[] };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[], themeProposals:[] };
 window._me   = null;
 window._myRole = 'member';
 
@@ -2658,6 +2697,124 @@ function deleteNote(key) {
   closeOv('ov-note-detail');
 }
 
+// ── Theme Proposals ──
+function renderHabitProposals() {
+  const section = document.getElementById('habit-proposals-section');
+  if(!section) return;
+  const proposals = [...(window._data.themeProposals||[])].sort((a,b)=>{
+    const va = Object.keys(a.votes||{}).length;
+    const vb = Object.keys(b.votes||{}).length;
+    return vb - va; // sort by votes desc
+  });
+  const isAdmin = window._myRole === 'admin';
+  const myId = window._me?.uid;
+
+  // Check if current month already has adopted theme
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const hasThisMonth = (window._data.habitThemes||[]).some(t=>t.month===thisMonth);
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+      <div>
+        <div style="font-family:var(--font-s);font-size:12px;font-weight:500;color:var(--muted);">テーマ提案</div>
+        <div style="font-size:11px;color:var(--muted2);">全員が提案できます。管理者が採用します</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openProposalModal()">＋ 提案する</button>
+    </div>`;
+
+  if(!proposals.length) {
+    html += `<div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:13px;">まだ提案がありません。最初の提案をしてみましょう！</div>`;
+  } else {
+    html += proposals.map(p => {
+      const u = window._data.users[p.uid];
+      const votes = p.votes || {};
+      const voteCount = Object.keys(votes).length;
+      const hasVoted = votes[myId];
+      const isMe = p.uid === myId;
+      const isAdopted = p.adopted;
+
+      return `<div class="proposal-card ${isAdopted?'adopted':''}" style="margin-bottom:8px;">
+        <div class="proposal-emoji">${p.emoji||'💡'}</div>
+        <div class="proposal-body">
+          <div class="proposal-title">${p.title}${isAdopted?'  ✅ 採用済み':''}</div>
+          ${p.desc?`<div class="proposal-desc">${p.desc}</div>`:''}
+          <div class="proposal-meta">
+            <span>${u?.name||'—'}</span>
+            <span>·</span>
+            <span>${timeAgo(p.createdAt)}</span>
+            ${voteCount>0?`<span>·</span><span>👍 ${voteCount}票</span>`:''}
+          </div>
+        </div>
+        <div class="proposal-actions">
+          <button class="vote-btn ${hasVoted?'voted':''}" onclick="toggleProposalVote('${p._key}')">
+            👍 ${voteCount>0?voteCount:''}
+          </button>
+          ${isAdmin&&!isAdopted?`<button class="btn btn-green btn-sm" onclick="adoptProposal('${p._key}')" style="font-size:11px;">採用</button>`:''}
+          ${isMe&&!isAdopted?`<button class="btn btn-danger btn-sm" onclick="deleteProposal('${p._key}')" style="font-size:11px;padding:4px 8px;">✕</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  section.innerHTML = html;
+}
+
+function openProposalModal() {
+  document.getElementById('proposal-title').value = '';
+  document.getElementById('proposal-desc').value = '';
+  document.getElementById('proposal-emoji').value = '💡';
+  openOv('ov-proposal');
+}
+
+function saveProposal() {
+  const title = document.getElementById('proposal-title').value.trim();
+  if(!title) { toast('テーマを入力してください'); return; }
+  const uid = window._me?.uid||'unknown';
+  fbPush('themeProposals', {
+    title,
+    desc: document.getElementById('proposal-desc').value.trim(),
+    emoji: document.getElementById('proposal-emoji').value.trim() || '💡',
+    uid, votes: {}, adopted: false, createdAt: Date.now()
+  });
+  toast('提案しました！');
+  closeOv('ov-proposal');
+}
+
+function toggleProposalVote(key) {
+  const myId = window._me?.uid;
+  if(!myId) return;
+  const p = (window._data.themeProposals||[]).find(x=>x._key===key);
+  if(!p) return;
+  const hasVoted = p.votes?.[myId];
+  if(hasVoted) fbRemove(`themeProposals/${key}/votes/${myId}`);
+  else fbSet(`themeProposals/${key}/votes/${myId}`, true);
+}
+
+function adoptProposal(key) {
+  if(!confirm('このテーマを今月のテーマとして採用しますか？')) return;
+  const p = (window._data.themeProposals||[]).find(x=>x._key===key);
+  if(!p) return;
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  // Check if theme for this month exists
+  const existing = (window._data.habitThemes||[]).find(t=>t.month===thisMonth);
+  const themeObj = {
+    title: p.title, desc: p.desc||'', emoji: p.emoji||'💡',
+    month: thisMonth, createdBy: window._me?.uid||'', updatedAt: Date.now()
+  };
+  if(existing) fbUpdate(`habitThemes/${existing._key}`, themeObj);
+  else fbPush('habitThemes', themeObj);
+  fbUpdate(`themeProposals/${key}`, {adopted:true});
+  toast('テーマを採用しました！🎉');
+}
+
+function deleteProposal(key) {
+  if(!confirm('提案を削除しますか？')) return;
+  fbRemove('themeProposals/' + key);
+  toast('削除しました');
+}
+
 // ═══════════════════════════════════════════════
 // HABIT BOARD
 // ═══════════════════════════════════════════════
@@ -2685,6 +2842,7 @@ function driveToImg(url) {
 
 function renderHabit() {
   renderHabitTheme();
+  renderHabitProposals();
   renderHabitWeekly();
   renderHabitShares();
   // Show/hide admin controls
@@ -2705,18 +2863,10 @@ function renderHabitTheme() {
   const current = themes.find(t => t.month === thisMonth) || themes[themes.length - 1];
 
   if(!current) {
-    section.innerHTML = isAdmin
-      ? `<div class="theme-banner" style="cursor:pointer;" onclick="openThemeModal()">
-          <div class="theme-banner-emoji">✏️</div>
-          <div class="theme-banner-title">今月のテーマを設定しよう</div>
-          <div class="theme-banner-desc">「＋ テーマを設定」ボタンでチームのテーマを決めましょう</div>
-          <button class="theme-banner-edit" onclick="event.stopPropagation();openThemeModal()">＋ 設定</button>
-        </div>`
-      : `<div class="theme-banner"><div class="theme-banner-emoji">✏️</div><div class="theme-banner-title">今月のテーマは未設定です</div></div>`;
-    // Update topbar
+    section.innerHTML = `<div class="theme-banner"><div class="theme-banner-emoji">💡</div><div class="theme-banner-title">今月のテーマは未設定です</div><div class="theme-banner-desc">下の提案エリアから提案してみましょう！</div>${isAdmin?`<button class="theme-banner-edit" onclick="openThemeModal()">＋ 設定</button>`:''}</div>`;
     const actions = document.getElementById('habit-topbar-actions');
-    if(actions && isAdmin) {
-      actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openThemeModal()">📌 テーマ設定</button><button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
+    if(actions) {
+      actions.innerHTML = `${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="openThemeModal()">📌 テーマ設定</button>`:''}<button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
     }
     return;
   }
