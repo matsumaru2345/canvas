@@ -3689,6 +3689,30 @@ function daysUntilReset(resetDay) {
 
 const DAY_NAMES = ['日','月','火','水','木','金','土'];
 
+// ── スケッチ年間テーマ ──
+const SKETCH_THEMES = {
+  1:  { emoji:'✏️',  title:'文房具',         desc:'ペン、ハサミなど。身近な道具をじっくり観察しよう！' },
+  2:  { emoji:'👟',  title:'身につけるもの', desc:'くつ、カバン。素材感や形の違いに注目！' },
+  3:  { emoji:'💡',  title:'照明',           desc:'スタンド、ペンダントライト。光と影も意識して。' },
+  4:  { emoji:'🫖',  title:'陶器',           desc:'マグカップ、一輪挿し、コーヒードリッパー等。質感を表現しよう！' },
+  5:  { emoji:'🥂',  title:'ガラス',         desc:'ロックグラス、香水瓶、ワインボトル等。透明感の表現に挑戦！' },
+  6:  { emoji:'🛵',  title:'モビリティ',     desc:'車、キックボード、バイク、自転車。乗り物の立体感を！' },
+  7:  { emoji:'🔧',  title:'ツール',         desc:'ハンドツール、ドライバー、ペンチ、カッターナイフ。工業的な美しさ！' },
+  8:  { emoji:'⌚',  title:'身につけるもの', desc:'スマートウォッチ、時計、イヤホン。精密さを意識して。' },
+  9:  { emoji:'🛋️',  title:'座る',           desc:'ソファ、スツール等。座り心地が伝わるように！' },
+  10: { emoji:'📷',  title:'ガジェット',     desc:'カメラ、レンズ等。メカっぽさと精巧さを表現！' },
+  11: { emoji:'🧸',  title:'子供のおもちゃ', desc:'ポップで楽しい形！丸みや色を意識して。' },
+  12: { emoji:'🏠',  title:'家電',           desc:'電子レンジ、PC、掃除機等。生活感のあるプロダクト！' },
+};
+
+function getSketchTheme(month) {
+  return SKETCH_THEMES[month] || null;
+}
+
+function getCurrentSketchTheme() {
+  return getSketchTheme(new Date().getMonth() + 1);
+}
+
 function setWeeklyView(v, el) {
   _weeklyView = v;
   document.querySelectorAll('#weekly-header .chip').forEach(c=>c.classList.remove('active'));
