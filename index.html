@@ -102,6 +102,8 @@ function initListeners() {
   onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
   onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
+  onValue(ref(db,'notes'), snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); renderAll(); });
+  onValue(ref(db,'notePosts'), snap => { window._data.notePosts={}; snap.forEach(c=>{ window._data.notePosts[c.key]={}; c.forEach(p=>window._data.notePosts[c.key][p.key]=p.val()); }); renderAll(); });
   onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'weeklyLogs'),  snap => { window._data.weeklyLogs={}; snap.forEach(c=>window._data.weeklyLogs[c.key]=c.val()); renderAll(); });
   document.getElementById('sync-dot').classList.add('live');
@@ -395,6 +397,33 @@ textarea.fi{resize:vertical;min-height:70px;}
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
+/* ── Notes ── */
+.note-thread{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow);}
+.note-thread:hover{box-shadow:var(--shadow-md);}
+.note-thread-head{padding:14px 16px;display:flex;align-items:flex-start;gap:12px;}
+.note-cat-badge{display:inline-flex;align-items:center;font-size:10px;padding:3px 8px;border-radius:4px;font-family:var(--font-s);font-weight:500;white-space:nowrap;flex-shrink:0;}
+.note-cat-議事録{background:#eff4ff;color:#1d4ed8;}
+.note-cat-テーマ出し{background:#fffbeb;color:#d97706;}
+.note-cat-インスピレーション{background:#f5f3ff;color:#7c3aed;}
+.note-cat-自由メモ{background:#f0fdf4;color:#16a34a;}
+.note-thread-title{font-size:14px;font-weight:500;line-height:1.4;flex:1;}
+.note-thread-meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.note-thread-foot{padding:9px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
+.note-preview{font-size:12px;color:var(--muted);padding:0 16px 12px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+/* note detail */
+.note-post{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
+.note-post:last-child{border-bottom:none;}
+.note-post-av{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.note-post-av img{width:100%;height:100%;object-fit:cover;}
+.note-post-av-ph{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0;}
+.note-post-body{flex:1;}
+.note-post-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.note-post-name{font-size:12px;font-weight:500;}
+.note-post-time{font-size:10px;color:var(--muted);}
+.note-post-text{font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-word;}
+.note-post-text a{color:var(--accent);text-decoration:none;}
+.note-post-text a:hover{text-decoration:underline;}
+
 /* ── Weekly Work ── */
 .wg-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
 .wg-card:hover{box-shadow:var(--shadow-md);}
@@ -650,6 +679,10 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
         <span>週間ワーク</span>
       </button>
+      <button class="nav-item" onclick="showPage('notes')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
+        <span>ノート</span>
+      </button>
       <div class="nav-sec" style="margin-top:8px;">管理</div>
       <button class="nav-item" id="nav-usermgmt" onclick="showPage('usermgmt')" style="display:none;">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
@@ -748,6 +781,33 @@ textarea.fi{resize:vertical;min-height:70px;}
         <button class="btn btn-primary" onclick="openEvModal()">＋ イベント追加</button>
       </div>
       <div style="padding:26px" id="schedule"></div>
+    </div>
+
+    <!-- Notes -->
+    <div id="page-notes" class="page">
+      <div class="topbar">
+        <span class="topbar-title">ノート</span>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openNoteModal()">＋ スレッドを作成</button>
+        </div>
+      </div>
+      <div style="padding:20px">
+        <!-- Search bar -->
+        <div style="position:relative;margin-bottom:14px;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+          <input class="fi" id="notes-search" placeholder="スレッドを検索…" oninput="renderNotes()" style="padding-left:32px;font-size:13px;">
+        </div>
+        <!-- Filter chips -->
+        <div class="filter-bar" id="notes-filter-bar">
+          <button class="chip active" onclick="filterNotes('all',this)">すべて</button>
+          <button class="chip" onclick="filterNotes('議事録',this)">📋 議事録</button>
+          <button class="chip" onclick="filterNotes('テーマ出し',this)">💡 テーマ出し</button>
+          <button class="chip" onclick="filterNotes('インスピレーション',this)">✨ インスピレーション</button>
+          <button class="chip" onclick="filterNotes('自由メモ',this)">📝 自由メモ</button>
+        </div>
+        <!-- Thread list (grouped by date) -->
+        <div id="notes-list"></div>
+      </div>
     </div>
 
     <!-- Weekly Work -->
@@ -854,6 +914,10 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
       週間
     </button>
+    <button class="bn-item" id="bn-notes" onclick="showPage('notes')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
+      ノート
+    </button>
     <button class="bn-item" id="bn-schedule" onclick="showPage('schedule')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
       予定
@@ -876,6 +940,36 @@ textarea.fi{resize:vertical;min-height:70px;}
       ログアウト
     </button>
   </div>
+</div>
+
+<!-- ── NOTE MODAL ── -->
+<div class="overlay" id="ov-note">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title" id="note-modal-ttl">新しいスレッドを作成</div>
+    <div class="fg"><label class="fl">タイトル</label><input class="fi" id="note-title" placeholder="例：3月集まりの議事録、今週のテーマ案"></div>
+    <div class="fg">
+      <label class="fl">カテゴリ</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;" id="note-cat-picker">
+        <button type="button" class="note-cat-btn active-cat" onclick="selectNoteCat('議事録',this)" style="padding:6px 12px;border-radius:20px;border:1px solid rgba(29,78,216,.3);background:var(--accent-bg);color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--font-j);transition:all .12s;">📋 議事録</button>
+        <button type="button" class="note-cat-btn" onclick="selectNoteCat('テーマ出し',this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-j);transition:all .12s;">💡 テーマ出し</button>
+        <button type="button" class="note-cat-btn" onclick="selectNoteCat('インスピレーション',this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-j);transition:all .12s;">✨ インスピレーション</button>
+        <button type="button" class="note-cat-btn" onclick="selectNoteCat('自由メモ',this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-j);transition:all .12s;">📝 自由メモ</button>
+      </div>
+      <input type="hidden" id="note-category" value="議事録">
+    </div>
+    <div class="fg"><label class="fl">日付</label><input type="date" class="fi" id="note-date"></div>
+    <div class="fg"><label class="fl">参加者（議事録の場合など、省略可）</label><input class="fi" id="note-members" placeholder="例：田中、鈴木、山田"></div>
+    <div class="fg"><label class="fl">内容（省略可）</label><textarea class="fi" id="note-body" placeholder="議事録の内容、テーマのアイデア、URLなど..." style="min-height:90px;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-note')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveNote()">作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NOTE DETAIL MODAL ── -->
+<div class="overlay" id="ov-note-detail">
+  <div class="modal" style="max-width:600px;" id="note-detail-body"></div>
 </div>
 
 <!-- ── WEEKLY GOAL MODAL ── -->
@@ -905,6 +999,12 @@ textarea.fi{resize:vertical;min-height:70px;}
         <button onclick="selectWgColor('#be185d',this)" style="width:28px;height:28px;border-radius:50%;background:#be185d;border:2px solid transparent;cursor:pointer;" class="color-pick"></button>
       </div>
       <input type="hidden" id="wg-color" value="#1d4ed8">
+    </div>
+    <div class="fg">
+      <label class="fl">開始日（7日ごとに自動リセット）</label>
+      <input type="date" class="fi" id="wg-start-date">
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;" id="wg-reset-preview">開始日から7日ごとにリセットされます</div>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;" onclick="setTodayAsStart()">今日を開始日にする</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOv('ov-weekly')">キャンセル</button>
@@ -1033,7 +1133,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{} };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{} };
 window._me   = null;
 window._myRole = 'member';
 
@@ -1130,6 +1230,7 @@ function renderAll(){
   if(_activePage==='schedule') renderSchedule();
   if(_activePage==='usermgmt') renderUserMgmt();
   if(_activePage==='weekly')    renderWeekly();
+  if(_activePage==='notes')     renderNotes();
   renderNotifs();
 }
 
@@ -1905,31 +2006,300 @@ function closeOv(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
 
 
+// ─── NOTES ───
+let _notesFilter = 'all';
+const NOTE_CATS = {
+  '議事録':         {icon:'📋', cls:'note-cat-議事録'},
+  'テーマ出し':     {icon:'💡', cls:'note-cat-テーマ出し'},
+  'インスピレーション':{icon:'✨', cls:'note-cat-インスピレーション'},
+  '自由メモ':       {icon:'📝', cls:'note-cat-自由メモ'},
+};
+
+function filterNotes(cat, el) {
+  _notesFilter = cat;
+  document.querySelectorAll('#notes-filter-bar .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderNotes();
+}
+
+function highlightSearch(text, query) {
+  if(!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark style="background:#fef08a;border-radius:2px;padding:0 1px;">$1</mark>');
+}
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  if(!list) return;
+  const query = (document.getElementById('notes-search')?.value||'').trim().toLowerCase();
+
+  let notes = [...window._data.notes].sort((a,b)=>{
+    // Sort by noteDate (if set) then updatedAt
+    const da = a.noteDate || '';
+    const db2 = b.noteDate || '';
+    if(da && db2) return db2.localeCompare(da);
+    return (b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt);
+  });
+  if(_notesFilter !== 'all') notes = notes.filter(n=>n.category===_notesFilter);
+  if(query) notes = notes.filter(n=>
+    (n.title||'').toLowerCase().includes(query) ||
+    (n.body||'').toLowerCase().includes(query) ||
+    (n.members||'').toLowerCase().includes(query) ||
+    (n.category||'').toLowerCase().includes(query)
+  );
+
+  if(!notes.length) {
+    list.innerHTML = query
+      ? `<div class="empty"><div class="empty-icon">🔍</div><p>「${query}」に一致するスレッドがありません</p></div>`
+      : empty('まだスレッドがありません。「＋ スレッドを作成」で始めよう！');
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  notes.forEach(n => {
+    const key = n.noteDate || 'nodate';
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  });
+
+  const fmt = dateStr => {
+    if(!dateStr || dateStr==='nodate') return '日付なし';
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  };
+
+  const sortedKeys = Object.keys(groups).sort((a,b)=>{
+    if(a==='nodate') return 1; if(b==='nodate') return -1;
+    return b.localeCompare(a);
+  });
+
+  list.innerHTML = sortedKeys.map(dateKey => {
+    const dateNotes = groups[dateKey];
+    const dateLabel = fmt(dateKey);
+    const notesHTML = dateNotes.map(n => {
+      const cat = NOTE_CATS[n.category] || NOTE_CATS['自由メモ'];
+      const posts = Object.values(window._data.notePosts[n._key] || {});
+      const u = window._data.users[n.createdBy];
+      const avHTML = u?.photo
+        ? `<img src="${u.photo}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`
+        : `<div style="width:22px;height:22px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;">${initials(u?.name||'?')}</div>`;
+      const titleHL = highlightSearch(n.title||'', query);
+      const bodyHL  = highlightSearch((n.body||'').slice(0,120), query);
+      return `<div class="note-thread" onclick="openNoteDetail('${n._key}')">
+        <div class="note-thread-head">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap;">
+              <span class="note-cat-badge ${cat.cls}">${cat.icon} ${n.category}</span>
+              ${n.members?`<span style="font-size:10px;color:var(--muted);">👥 ${n.members}</span>`:''}
+            </div>
+            <div class="note-thread-title">${titleHL}</div>
+            <div class="note-thread-meta">
+              ${avHTML}
+              <span>${u?.name||'—'}</span>
+              <span>·</span>
+              <span>${timeAgo(n.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+        ${n.body?`<div class="note-preview">${bodyHL}${n.body.length>120?'…':''}</div>`:''}
+        <div class="note-thread-foot">
+          <span style="font-size:11px;color:var(--muted);">💬 ${posts.length}件の投稿</span>
+          <span style="font-size:11px;color:var(--muted);">${timeAgo(n.updatedAt||n.createdAt)}</span>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:20px;">
+      <div style="font-size:11px;color:var(--muted);font-family:var(--font-s);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);">${dateLabel}</div>
+      ${notesHTML}
+    </div>`;
+  }).join('');
+}
+
+function openNoteDetail(key) {
+  const n = window._data.notes.find(x=>x._key===key);
+  if(!n) return;
+  const cat = NOTE_CATS[n.category] || NOTE_CATS['自由メモ'];
+  const posts = Object.entries(window._data.notePosts[key]||{})
+    .map(([k,v])=>({_key:k,...v}))
+    .sort((a,b)=>a.createdAt-b.createdAt);
+  const u = window._data.users[n.createdBy];
+
+  const renderPost = p => {
+    const pu = window._data.users[p.uid];
+    const avHTML = pu?.photo
+      ? `<img src="${pu.photo}">`
+      : `<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
+    // linkify URLs
+    const linked = (p.text||'').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
+    return `<div class="note-post">
+      <div class="note-post-av">${avHTML}</div>
+      <div class="note-post-body">
+        <div class="note-post-meta">
+          <span class="note-post-name">${pu?.name||'—'}</span>
+          <span class="note-post-time">${timeAgo(p.createdAt)}</span>
+        </div>
+        <div class="note-post-text">${linked}</div>
+      </div>
+    </div>`;
+  };
+
+  const noteDateFmt = n.noteDate ? (() => { const d=new Date(n.noteDate+'T00:00:00'); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`; })() : '';
+  document.getElementById('note-detail-body').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="note-cat-badge ${cat.cls}">${cat.icon} ${n.category}</span>
+          ${n.noteDate?`<span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:4px;">📅 ${noteDateFmt}</span>`:''}
+        </div>
+        <h2 style="font-size:16px;font-weight:500;line-height:1.4;">${n.title}</h2>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span>${u?.name||'—'} · ${timeAgo(n.createdAt)}</span>
+          ${n.members?`<span>👥 ${n.members}</span>`:''}
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')" style="flex-shrink:0;margin-left:12px;">削除</button>
+    </div>
+
+    ${n.body?`<div style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.8;margin-bottom:16px;white-space:pre-wrap;word-break:break-word;">${(n.body).replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" style="color:var(--accent);">$1</a>')}</div>`:''}
+
+    <div style="border-top:1px solid var(--border);padding-top:14px;">
+      <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">投稿 (${posts.length}件)</div>
+      <div id="note-posts-thread-${key}" style="max-height:380px;overflow-y:auto;margin-bottom:14px;">
+        ${posts.length ? posts.map(renderPost).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">まだ投稿がありません。最初のコメントを書こう！</div>'}
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <textarea id="note-post-input-${key}" class="fi" placeholder="コメント、アイデア、URLなどを入力…" style="flex:1;min-height:60px;resize:none;font-size:13px;" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){postNoteComment('${key}');event.preventDefault();}"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="postNoteComment('${key}')">投稿</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Cmd/Ctrl + Enter で送信</div>
+    </div>
+    <div style="margin-top:16px;text-align:right;"><button class="btn btn-ghost btn-sm" onclick="closeOv('ov-note-detail')">閉じる</button></div>`;
+  openOv('ov-note-detail');
+}
+
+async function postNoteComment(noteKey) {
+  const inp = document.getElementById(`note-post-input-${noteKey}`);
+  const text = inp.value.trim();
+  if(!text) return;
+  const uid = window._me?.uid||'unknown';
+  await fbPush(`notePosts/${noteKey}`, {uid, text, createdAt:Date.now()});
+  // update note's updatedAt
+  fbUpdate(`notes/${noteKey}`, {updatedAt:Date.now()});
+  inp.value='';
+  // refresh thread in modal
+  const posts = Object.entries(window._data.notePosts[noteKey]||{})
+    .map(([k,v])=>({_key:k,...v}))
+    .sort((a,b)=>a.createdAt-b.createdAt);
+  const thread = document.getElementById(`note-posts-thread-${noteKey}`);
+  if(thread) {
+    const n = window._data.notes.find(x=>x._key===noteKey);
+    const cat = NOTE_CATS[n?.category]||NOTE_CATS['自由メモ'];
+    const renderPost = p => {
+      const pu = window._data.users[p.uid];
+      const avHTML = pu?.photo
+        ? `<img src="${pu.photo}">`
+        : `<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
+      const linked = (p.text||'').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
+      return `<div class="note-post">
+        <div class="note-post-av">${avHTML}</div>
+        <div class="note-post-body">
+          <div class="note-post-meta">
+            <span class="note-post-name">${pu?.name||'—'}</span>
+            <span class="note-post-time">${timeAgo(p.createdAt)}</span>
+          </div>
+          <div class="note-post-text">${linked}</div>
+        </div>
+      </div>`;
+    };
+    thread.innerHTML = posts.map(renderPost).join('');
+    thread.scrollTop = thread.scrollHeight;
+  }
+}
+
+function openNoteModal() {
+  document.getElementById('note-title').value='';
+  document.getElementById('note-body').value='';
+  document.getElementById('note-members').value='';
+  document.getElementById('note-category').value='議事録';
+  // Set today's date
+  const today = new Date();
+  document.getElementById('note-date').value =
+    today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  document.querySelectorAll('.note-cat-btn').forEach((b,i)=>{
+    if(i===0){b.style.background='var(--accent-bg)';b.style.color='var(--accent)';b.style.borderColor='rgba(29,78,216,.3)';}
+    else{b.style.background='var(--surface2)';b.style.color='var(--muted)';b.style.borderColor='var(--border2)';}
+  });
+  openOv('ov-note');
+}
+
+function selectNoteCat(cat, el) {
+  document.getElementById('note-category').value = cat;
+  document.querySelectorAll('.note-cat-btn').forEach(b=>{
+    b.style.background='var(--surface2)'; b.style.color='var(--muted)'; b.style.borderColor='var(--border2)';
+  });
+  el.style.background='var(--accent-bg)'; el.style.color='var(--accent)'; el.style.borderColor='rgba(29,78,216,.3)';
+}
+
+function saveNote() {
+  const title = document.getElementById('note-title').value.trim();
+  if(!title){ toast('タイトルを入力してください'); return; }
+  const category = document.getElementById('note-category').value || '自由メモ';
+  const body     = document.getElementById('note-body').value.trim();
+  const noteDate = document.getElementById('note-date').value;
+  const members  = document.getElementById('note-members').value.trim();
+  const uid = window._me?.uid||'unknown';
+  const now = Date.now();
+  fbPush('notes', {title, category, body, noteDate, members, createdBy:uid, createdAt:now, updatedAt:now});
+  toast('スレッドを作成しました！');
+  closeOv('ov-note');
+}
+
+function deleteNote(key) {
+  if(!confirm('このスレッドを削除しますか？投稿もすべて削除されます。')) return;
+  fbRemove(`notes/${key}`);
+  fbRemove(`notePosts/${key}`);
+  toast('削除しました');
+  closeOv('ov-note-detail');
+}
+
 // ─── WEEKLY WORK ───
 let _weeklyView = 'personal';
 
-function getWeekKey(date) {
-  const d = date || new Date();
-  const day = d.getDay(); // 0=Sun
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-  const mon = new Date(d.setDate(diff));
-  return mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
+// 曜日ごとの週キーを計算（resetDay: 0=日, 1=月, ..., 6=土）
+function getWeekKeyForDay(date, resetDay) {
+  const d = new Date(date);
+  const currentDay = d.getDay(); // 0=Sun
+  // その週の「開始日」を計算
+  let diff = currentDay - resetDay;
+  if (diff < 0) diff += 7;
+  const start = new Date(d);
+  start.setDate(d.getDate() - diff);
+  return start.getFullYear() + '-' + String(start.getMonth()+1).padStart(2,'0') + '-' + String(start.getDate()).padStart(2,'0');
 }
 
+function getWeekKey(date) { return getWeekKeyForDay(date || new Date(), 1); }
 function getThisWeekKey() { return getWeekKey(new Date()); }
 
-function getLastWeekKey() {
+function getLastWeekKeyForGoal(resetDay) {
   const d = new Date();
   d.setDate(d.getDate() - 7);
-  return getWeekKey(d);
+  return getWeekKeyForDay(d, resetDay ?? 1);
 }
 
-function daysUntilMonday() {
+function getThisWeekKeyForGoal(resetDay) {
+  return getWeekKeyForDay(new Date(), resetDay ?? 1);
+}
+
+function daysUntilReset(resetDay) {
   const now = new Date();
-  const day = now.getDay();
-  const diff = day === 1 ? 7 : (8 - day) % 7;
+  const currentDay = now.getDay();
+  let diff = resetDay - currentDay;
+  if (diff <= 0) diff += 7;
   return diff;
 }
+
+const DAY_NAMES = ['日','月','火','水','木','金','土'];
 
 function setWeeklyView(v, el) {
   _weeklyView = v;
@@ -1939,40 +2309,45 @@ function setWeeklyView(v, el) {
 }
 
 function renderWeekly() {
-  const weekKey = getThisWeekKey();
-  const d = new Date();
-  const mon = new Date(d);
-  mon.setDate(d.getDate() - (d.getDay()===0?6:d.getDay()-1));
-  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-  const fmt = dt => (dt.getMonth()+1) + '/' + dt.getDate();
-  const rl = document.getElementById('weekly-range-label');
-  const rr = document.getElementById('weekly-reset-label');
-  if(rl) rl.textContent = fmt(mon) + ' 〜 ' + fmt(sun);
-  if(rr) rr.textContent = '月曜日にリセット（あと' + daysUntilMonday() + '日）';
-
   const goals = window._data.weeklyGoals;
   const logs  = window._data.weeklyLogs;
   const myId  = window._me?.uid;
   const grid  = document.getElementById('weekly-goals-grid');
   if(!grid) return;
 
+  // ヘッダーは自分の最初の目標のリセット曜日を基準に表示
+  const myGoals = goals.filter(g => g.uid === myId);
+  const refResetDay = myGoals[0]?.resetDay ?? 1;
+  const weekKey = getThisWeekKeyForGoal(refResetDay);
+  const d = new Date();
+  const startDate = new Date(weekKey);
+  const endDate = new Date(startDate); endDate.setDate(startDate.getDate()+6);
+  const fmt = dt => (dt.getMonth()+1) + '/' + dt.getDate();
+  const rl = document.getElementById('weekly-range-label');
+  const rr = document.getElementById('weekly-reset-label');
+  if(rl) rl.textContent = fmt(startDate) + ' 〜 ' + fmt(endDate);
+  if(rr) rr.textContent = DAY_NAMES[refResetDay] + '曜日にリセット（あと' + daysUntilReset(refResetDay) + '日）';
+
   if(!goals.length) {
     grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⏱</div><p>まだ週間目標がありません。<br>「＋ 目標を追加」で作ってみよう！</p></div>';
   } else if(_weeklyView === 'personal') {
-    const myGoals = goals.filter(g => g.uid === myId);
     if(!myGoals.length) {
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">＋</div><p>自分の目標がまだありません</p></div>';
     } else {
-      grid.innerHTML = myGoals.map(g => wgCardHTML(g, weekKey, logs, myId)).join('');
+      grid.innerHTML = myGoals.map(g => {
+        const gWeekKey = getThisWeekKeyForGoal(g.resetDay ?? 1);
+        return wgCardHTML(g, gWeekKey, logs, myId);
+      }).join('');
     }
   } else {
-    // team view — group by goal name across all users
     const users = window._data.users;
     grid.innerHTML = goals.map(g => {
-      const logKey = g.uid + '_' + weekKey + '_' + g._key;
+      const gWeekKey = getThisWeekKeyForGoal(g.resetDay ?? 1);
+      const logKey = g.uid + '_' + gWeekKey + '_' + g._key;
       const cur = logs[logKey]?.count || 0;
       const pct = Math.min(100, Math.round(cur / g.target * 100));
       const u = users[g.uid];
+      const rd = g.resetDay ?? 1;
       const avHTML = u?.photo
         ? `<img src="${u.photo}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`
         : `<div style="width:22px;height:22px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;">${initials(u?.name||'?')}</div>`;
@@ -1983,7 +2358,7 @@ function renderWeekly() {
             <span class="wg-emoji">${g.emoji||'🎨'}</span>
             <div class="wg-info">
               <div class="wg-title">${g.name}</div>
-              <div class="wg-sub">目標: ${g.target} ${g.unit}</div>
+              <div class="wg-sub">目標: ${g.target} ${g.unit} · ${DAY_NAMES[rd]}リセット</div>
             </div>
             ${avHTML}
           </div>
@@ -1995,7 +2370,6 @@ function renderWeekly() {
     }).join('');
   }
 
-  // History (last week)
   renderWeeklyHistory();
 }
 
@@ -2011,7 +2385,7 @@ function wgCardHTML(g, weekKey, logs, myId) {
         <span class="wg-emoji">${g.emoji||'🎨'}</span>
         <div class="wg-info">
           <div class="wg-title">${g.name}</div>
-          <div class="wg-sub">週の目標: ${g.target} ${g.unit}</div>
+          <div class="wg-sub">週の目標: ${g.target} ${g.unit} · ${DAY_NAMES[g.resetDay??1]}リセット</div>
         </div>
         <button class="wg-delete-btn" onclick="deleteWeeklyGoal('${g._key}')">✕</button>
       </div>
@@ -2034,12 +2408,14 @@ function wgCardHTML(g, weekKey, logs, myId) {
   </div>`;
 }
 
-function updateWeeklyCount(goalKey, weekKey, delta) {
+function updateWeeklyCount(goalKey, _unused, delta) {
   const myId = window._me?.uid;
   if(!myId) return;
+  const goal = window._data.weeklyGoals.find(g=>g._key===goalKey);
+  const resetDay = goal?.resetDay ?? 1;
+  const weekKey = getThisWeekKeyForGoal(resetDay);
   const logKey = myId + '_' + weekKey + '_' + goalKey;
   const cur = window._data.weeklyLogs[logKey]?.count || 0;
-  const goal = window._data.weeklyGoals.find(g=>g._key===goalKey);
   const newVal = Math.max(0, cur + delta);
   const wasNotDone = cur < (goal?.target||99);
   const nowDone = newVal >= (goal?.target||99);
@@ -2048,7 +2424,6 @@ function updateWeeklyCount(goalKey, weekKey, delta) {
 }
 
 function renderWeeklyHistory() {
-  const lastKey = getLastWeekKey();
   const logs = window._data.weeklyLogs;
   const myId = window._me?.uid;
   const hist = document.getElementById('weekly-history');
@@ -2058,6 +2433,8 @@ function renderWeeklyHistory() {
   if(!myGoals.length) { hist.innerHTML = ''; return; }
 
   const rows = myGoals.map(g => {
+    const resetDay = g.resetDay ?? 1;
+    const lastKey = getLastWeekKeyForGoal(resetDay);
     const logKey = myId + '_' + lastKey + '_' + g._key;
     const count = logs[logKey]?.count || 0;
     const pct = Math.min(100, Math.round(count / g.target * 100));
@@ -2075,14 +2452,35 @@ function renderWeeklyHistory() {
   hist.innerHTML = rows || '<div style="font-size:13px;color:var(--muted);">先週の記録がありません</div>';
 }
 
+function selectResetDay(day, el) {
+  document.getElementById('wg-reset-day').value = day;
+  document.querySelectorAll('.reset-day-btn').forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.color = 'var(--muted)';
+    b.style.borderColor = 'var(--border2)';
+  });
+  el.style.background = 'var(--accent-bg)';
+  el.style.color = 'var(--accent)';
+  el.style.borderColor = 'rgba(29,78,216,.3)';
+  document.getElementById('wg-reset-preview').textContent = '毎週' + DAY_NAMES[day] + '曜日にリセットされます';
+}
+
 function openWeeklyModal() {
   document.getElementById('wg-name').value='';
   document.getElementById('wg-unit').value='';
   document.getElementById('wg-target').value='';
   document.getElementById('wg-emoji').value='🎨';
   document.getElementById('wg-color').value='#1d4ed8';
+  document.getElementById('wg-reset-day').value='1';
+  document.getElementById('wg-reset-preview').textContent='毎週月曜日にリセットされます';
   document.querySelectorAll('.color-pick').forEach(b=>b.classList.remove('active-color'));
   document.querySelector('.color-pick').classList.add('active-color');
+  // reset day buttons
+  document.querySelectorAll('.reset-day-btn').forEach((b,i) => {
+    b.style.background = i===0 ? 'var(--accent-bg)' : 'var(--surface2)';
+    b.style.color = i===0 ? 'var(--accent)' : 'var(--muted)';
+    b.style.borderColor = i===0 ? 'rgba(29,78,216,.3)' : 'var(--border2)';
+  });
   // emoji picker clicks
   document.getElementById('wg-emoji-picker').onclick = e => {
     const txt = e.target.textContent?.trim();
@@ -2100,13 +2498,14 @@ function selectWgColor(color, el) {
 function saveWeeklyGoal() {
   const name = document.getElementById('wg-name').value.trim();
   if(!name) { toast('目標の名前を入力してください'); return; }
-  const unit   = document.getElementById('wg-unit').value.trim() || '回';
-  const target = parseInt(document.getElementById('wg-target').value) || 5;
-  const emoji  = document.getElementById('wg-emoji').value.trim() || '🎨';
-  const color  = document.getElementById('wg-color').value || '#1d4ed8';
-  const myId   = window._me?.uid;
+  const unit     = document.getElementById('wg-unit').value.trim() || '回';
+  const target   = parseInt(document.getElementById('wg-target').value) || 5;
+  const emoji    = document.getElementById('wg-emoji').value.trim() || '🎨';
+  const color    = document.getElementById('wg-color').value || '#1d4ed8';
+  const resetDay = parseInt(document.getElementById('wg-reset-day').value) ?? 1;
+  const myId     = window._me?.uid;
   if(!myId) return;
-  fbPush('weeklyGoals', {name, unit, target, emoji, color, uid:myId, createdAt:Date.now()});
+  fbPush('weeklyGoals', {name, unit, target, emoji, color, resetDay, uid:myId, createdAt:Date.now()});
   toast('週間目標を追加しました！');
   closeOv('ov-weekly');
 }
@@ -2141,12 +2540,12 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={dash:0,events:1,tasks:2,schedule:3,weekly:4,usermgmt:5}[id];
+  const idx={dash:0,events:1,tasks:2,schedule:3,weekly:4,notes:5,usermgmt:6}[id];
   const navItems=document.querySelectorAll('.nav-item');
   if(navItems[idx]) navItems[idx].classList.add('active');
   // sync bottom nav
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',weekly:'bn-weekly'};
+  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',weekly:'bn-weekly',notes:'bn-notes'};
   if(bnMap[id]) document.getElementById(bnMap[id])?.classList.add('active');
   _activePage=id; renderAll();
 }
