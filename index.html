@@ -89,8 +89,7 @@ function showApp(user) {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('user-avatar-img').src = user.photoURL || '';
   document.getElementById('user-name-label').textContent = user.displayName;
-  const topbarAv = document.getElementById('topbar-avatar');
-  if(topbarAv && user.photoURL) topbarAv.src = user.photoURL;
+
   initListeners();
 }
 
@@ -771,8 +770,18 @@ textarea.fi{resize:vertical;min-height:70px;}
   /* ── Pending card ── */
   .pending-card{padding:28px 20px;}
 
-  /* ── Mobile avatar menu btn visible ── */
-  #mobile-menu-btn{display:flex !important;background:none !important;border:2px solid var(--border2) !important;box-shadow:none !important;padding:4px !important;border-radius:50% !important;}
+  /* ── Mobile user bar (above bottom nav) ── */
+  #mobile-user-bar{
+    display:flex !important;
+    position:fixed;bottom:60px;left:0;right:0;z-index:199;
+    background:var(--surface);border-top:2px solid var(--border);
+    padding:8px 12px;gap:8px;align-items:center;
+    box-shadow:0 -2px 12px rgba(79,70,229,.06);
+  }
+  #mobile-user-bar img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-light);}
+  #mobile-user-bar .mu-name{font-size:13px;font-weight:700;color:var(--text);flex:1;}
+  #mobile-user-bar .mu-role{font-size:10px;color:var(--muted);}
+  .main{padding-bottom:120px !important;}
 
   /* ── Mobile dropdown menu ── */
   .mobile-menu{
@@ -876,29 +885,31 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
         <span>ノート</span>
       </button>
-      <div class="nav-sec" style="margin-top:8px;">管理</div>
-      <button class="nav-item" id="nav-usermgmt" onclick="showPage('usermgmt')" style="display:none;">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
-        <span>ユーザー管理</span>
-      </button>
-      <div class="nav-sec" style="margin-top:8px;">コミュニティ</div>
       <button class="nav-item" onclick="toggleNotif()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5zM6.5 13a1.5 1.5 0 003 0"/></svg>
         <span>通知</span>
         <span class="notif-badge" id="notif-count" style="display:none">0</span>
       </button>
+      <!-- 管理者のみ表示 -->
+      <button class="nav-item" id="nav-usermgmt" onclick="showPage('usermgmt')" style="display:none;">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
+        <span>ユーザー管理</span>
+      </button>
     </nav>
+    <!-- ユーザーエリア：プロフィール＋ログアウト -->
     <div class="user-area">
-      <div class="user-row">
+      <div class="user-row" onclick="openProfileModal()" style="cursor:pointer;margin-bottom:8px;" title="プロフィール編集">
         <img id="user-avatar-img" class="user-av" src="" alt="" onerror="this.style.display='none'">
         <div class="user-info">
           <div class="user-name" id="user-name-label">—</div>
           <div class="user-role" id="user-role-label">デザイナー</div>
         </div>
-        <button class="logout-btn" onclick="logoutApp()" title="ログアウト">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
-        </button>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5"><path d="M11 3l2 2-7 7H4v-2l7-7z"/></svg>
       </div>
+      <button class="nav-item" onclick="logoutApp()" style="color:var(--red);width:100%;">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
+        <span>ログアウト</span>
+      </button>
     </div>
   </aside>
 
@@ -911,9 +922,7 @@ textarea.fi{resize:vertical;min-height:70px;}
         <span class="topbar-title">ダッシュボード</span>
         <div class="topbar-actions">
           <button class="btn btn-primary" onclick="openEvModal()">＋ イベント追加</button>
-          <button class="btn btn-ghost btn-sm" id="mobile-menu-btn" onclick="toggleMobileMenu()" style="display:none;padding:5px 8px;">
-            <img id="topbar-avatar" src="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none'">
-          </button>
+
         </div>
       </div>
       <div style="padding:26px">
@@ -1141,6 +1150,9 @@ textarea.fi{resize:vertical;min-height:70px;}
     <div class="notif-list" id="notif-list"></div>
   </div>
 
+  <!-- Mobile user bar (shown above bottom nav on mobile) -->
+  <div id="mobile-user-bar" style="display:none;"></div>
+
   <!-- ── Bottom Navigation (mobile only) ── -->
   <nav class="bottom-nav" id="bottom-nav">
     <button class="bn-item active" id="bn-dash" onclick="showPage('dash')">
@@ -1174,17 +1186,7 @@ textarea.fi{resize:vertical;min-height:70px;}
     </button>
   </nav>
 
-  <!-- Mobile dropdown menu -->
-  <div class="mobile-menu" id="mobile-menu">
-    <button class="mm-item" onclick="showPage('usermgmt');toggleMobileMenu()" id="mm-usermgmt" style="display:none;">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
-      ユーザー管理
-    </button>
-    <button class="mm-item danger" onclick="logoutApp()">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
-      ログアウト
-    </button>
-  </div>
+
 </div>
 
 <!-- ── NOTE MODAL ── -->
@@ -1215,6 +1217,32 @@ textarea.fi{resize:vertical;min-height:70px;}
 <!-- ── NOTE DETAIL MODAL ── -->
 <div class="overlay" id="ov-note-detail">
   <div class="modal" style="max-width:720px;" id="note-detail-body"></div>
+</div>
+
+<!-- ── PROFILE MODAL ── -->
+<div class="overlay" id="ov-profile">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">プロフィール編集</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:var(--surface2);border-radius:var(--radius-sm);">
+      <img id="profile-modal-avatar" src="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-light);" onerror="this.style.display='none'">
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:2px;">Googleアカウントの写真が使われます</div>
+        <div id="profile-modal-email" style="font-size:11px;color:var(--muted2);"></div>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">表示名</label>
+      <input class="fi" id="profile-display-name" placeholder="例：田中花子">
+    </div>
+    <div class="fg">
+      <label class="fl">ひとこと（省略可）</label>
+      <input class="fi" id="profile-bio" placeholder="例：イラスト・グラフィック担当">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-profile')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveProfile()">保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── SHARE MODAL ── -->
@@ -1557,14 +1585,24 @@ function launchConfetti(){
 
 // ─── RENDER ───
 function renderAll(){
+  // Mobile user bar
+  const mub = document.getElementById('mobile-user-bar');
+  if(mub && window._me) {
+    const isAdmin = window._myRole === 'admin';
+    mub.innerHTML = `
+      ${window._me.photoURL ? `<img src="${window._me.photoURL}" onerror="this.style.display='none'">` : ''}
+      <div><div class="mu-name">${window._me.displayName||'—'}</div><div class="mu-role">${isAdmin?'管理者':'デザイナー'}</div></div>
+      ${isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="showPage('usermgmt')" style="font-size:11px;padding:5px 10px;">管理</button>` : ''}
+      <button onclick="logoutApp()" style="background:var(--red-bg);color:var(--red);border:2px solid rgba(239,68,68,.2);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-j);">ログアウト</button>`;
+  }
   // Show/hide admin nav
   const isAdmin = window._myRole === 'admin';
   const navUm = document.getElementById('nav-usermgmt');
   if(navUm) navUm.style.display = isAdmin ? '' : 'none';
+  const navUmBottom = document.getElementById('nav-usermgmt-bottom');
+  if(navUmBottom) navUmBottom.style.display = isAdmin ? '' : 'none';
   const roleLabel = document.getElementById('user-role-label');
   if(roleLabel) roleLabel.textContent = isAdmin ? '管理者' : 'デザイナー';
-  const mmUm = document.getElementById('mm-usermgmt');
-  if(mmUm) mmUm.style.display = isAdmin ? '' : 'none';
 
   if(_activePage==='dash')     renderDash();
   if(_activePage==='events')   renderEvents();
@@ -1836,8 +1874,8 @@ function renderUserMgmt(){
         <div style="display:flex;align-items:center;gap:9px;">
           ${u.photo?`<img src="${u.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`:`<div style="width:30px;height:30px;border-radius:50%;background:${avBg(avColor(u.name||''))};color:${avColor(u.name||'')};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;">${initials(u.name||'?')}</div>`}
           <div>
-            <div style="font-size:13px;font-weight:500;">${u.name||'—'}</div>
-            <div style="font-size:11px;color:var(--muted);">${u.email||''}</div>
+            <div style="font-size:13px;font-weight:500;">${u.displayName||u.name||'—'}</div>
+            <div style="font-size:11px;color:var(--muted);">${u.bio||u.email||''}</div>
           </div>
         </div>
       </td>
@@ -1851,36 +1889,132 @@ function renderUserMgmt(){
 
 function generateInviteCode(){
   const code = Math.random().toString(36).substring(2,8).toUpperCase();
-  fbPush('invites',{code,createdAt:Date.now(),createdBy:window._me?.uid||'',used:false});
-  toast(`招待コード「${code}」を発行しました！下のボタンで送れます`);
+  const appUrl = window.location.href.split('?')[0];
+  const inviteText = `CANVASに招待します！
+アプリを開いてGoogleログイン後、招待コードを入力してください。
+
+招待コード：${code}
+
+アプリURL：${appUrl}`;
+
+  // Firebase保存
+  fbPush('invites',{code, createdAt:Date.now(), createdBy:window._me?.uid||'', used:false});
+
+  // すぐにコピーポップアップを表示
+  showInvitePopup(code, inviteText);
+}
+
+function showInvitePopup(code, inviteText) {
+  // 既存のポップアップを削除
+  const existing = document.getElementById('invite-popup');
+  if(existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'invite-popup';
+  popup.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:800;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+    backdrop-filter:blur(4px);animation:pop .2s ease;
+  `;
+
+  popup.innerHTML = `
+    <div style="background:var(--surface);border:2px solid var(--border2);border-radius:var(--radius-xl);
+      padding:28px 24px;max-width:400px;width:100%;box-shadow:var(--shadow-lg);text-align:center;">
+
+      <div style="font-size:40px;margin-bottom:12px;">🎉</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">招待コードを発行しました</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px;">以下のボタンで招待文をコピーして送ってください</div>
+
+      <!-- コード表示 -->
+      <div style="background:var(--accent-bg);border:2px solid var(--accent-light);border-radius:var(--radius);
+        padding:16px;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:4px;letter-spacing:.06em;">招待コード</div>
+        <div style="font-size:36px;font-weight:700;letter-spacing:.22em;color:var(--accent);">${code}</div>
+      </div>
+
+      <!-- 招待文プレビュー -->
+      <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;
+        font-size:12px;line-height:1.8;color:var(--text);text-align:left;margin-bottom:16px;
+        white-space:pre-wrap;border:1px solid var(--border2);">${inviteText}</div>
+
+      <!-- コピーボタン（大きく目立つ） -->
+      <button onclick="doCopyInvite()" id="invite-copy-btn"
+        style="width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#6366f1);
+        color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;
+        cursor:pointer;box-shadow:0 4px 16px rgba(79,70,229,.4);margin-bottom:10px;
+        font-family:var(--font-j);transition:all .15s;letter-spacing:.02em;"
+        onmouseenter="this.style.opacity='.88'"
+        onmouseleave="this.style.opacity='1'"
+        onmousedown="this.style.transform='scale(.97)'"
+        onmouseup="this.style.transform='scale(1)'">
+        📋 招待文をコピーする
+      </button>
+
+      <button onclick="document.getElementById('invite-popup').remove()"
+        style="width:100%;padding:10px;background:none;border:2px solid var(--border2);
+        border-radius:var(--radius-sm);font-size:13px;color:var(--muted);cursor:pointer;
+        font-family:var(--font-j);font-weight:600;transition:all .12s;"
+        onmouseenter="this.style.background='var(--surface2)'"
+        onmouseleave="this.style.background='none'">
+        閉じる
+      </button>
+    </div>
+  `;
+
+  // Store invite text for copy
+  popup._inviteText = inviteText;
+  document.body.appendChild(popup);
+
+  // Close on backdrop click
+  popup.addEventListener('click', e => {
+    if(e.target === popup) popup.remove();
+  });
+
+  // Auto-copy attempt
+  window._pendingInviteText = inviteText;
+}
+
+function doCopyInvite() {
+  const text = window._pendingInviteText;
+  if(!text) return;
+  const btn = document.getElementById('invite-copy-btn');
+
+  const doSuccess = () => {
+    if(btn) {
+      btn.textContent = '✅ コピーしました！LINEに貼り付けて送ってください';
+      btn.style.background = 'linear-gradient(135deg,#22c55e,#16a34a)';
+      setTimeout(()=>{
+        if(btn){ btn.textContent = '📋 招待文をコピーする'; btn.style.background = 'linear-gradient(135deg,var(--accent),#6366f1)'; }
+      }, 2500);
+    }
+  };
+
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(doSuccess).catch(()=>{
+      fallbackCopy(text);
+      doSuccess();
+    });
+  } else {
+    fallbackCopy(text);
+    doSuccess();
+  }
 }
 
 function copyInviteBlock(key){
   const el = document.getElementById('invite-text-' + key);
   if(!el){ toast('エラーが発生しました'); return; }
-  const text = el.innerText;
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text)
-      .then(()=>toast('✅ コピーしました！LINEに貼り付けて送ってください'))
-      .catch(()=>fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
-  }
+  const text = el.textContent || el.innerText;
+  window._pendingInviteText = text;
+  doCopyInvite();
 }
 
 function fallbackCopy(text){
   const ta = document.createElement('textarea');
   ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
   document.body.appendChild(ta);
   ta.focus(); ta.select();
-  try {
-    document.execCommand('copy');
-    toast('✅ コピーしました！LINEに貼り付けて送ってください');
-  } catch(e) {
-    toast('コピーできませんでした。手動で選択してコピーしてください');
-  }
+  try { document.execCommand('copy'); } catch(e) {}
   document.body.removeChild(ta);
 }
 
@@ -3562,13 +3696,13 @@ function wgCardHTML(g, weekKey, logs, myId) {
   return `<div class="wg-card">
     <div class="wg-stripe" style="background:${g.color||'#1d4ed8'}"></div>
     <div class="wg-body">
-      <div class="wg-header">
+      <div class="wg-header" style="cursor:pointer;" onclick="openWeeklyGoalDetail('${g._key}')">
         <span class="wg-emoji">${g.emoji||'🎨'}</span>
         <div class="wg-info">
           <div class="wg-title">${g.name}</div>
           <div class="wg-sub">週の目標: ${g.target} ${g.unit} · ${DAY_NAMES[g.resetDay??1]}リセット</div>
         </div>
-        <button class="wg-delete-btn" onclick="deleteWeeklyGoal('${g._key}')">✕</button>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5" style="flex-shrink:0;"><path d="M11 3l2 2-7 7H4v-2l7-7z"/></svg>
       </div>
       <div class="wg-prog-row">
         <span>${done?'🎉 達成！':'進捗'}</span>
@@ -3579,9 +3713,9 @@ function wgCardHTML(g, weekKey, logs, myId) {
       </div>
       <div class="wg-controls">
         <div class="wg-counter">
-          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','${weekKey}',-1)">−</button>
+          <button class="wg-count-btn" onclick="event.stopPropagation();updateWeeklyCount('${g._key}','${weekKey}',-1)">−</button>
           <span class="wg-count-val">${cur}</span>
-          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','${weekKey}',1)" style="${done?'background:var(--green-bg);color:var(--green);border-color:rgba(22,163,74,.3);':''}">＋</button>
+          <button class="wg-count-btn" onclick="event.stopPropagation();updateWeeklyCount('${g._key}','${weekKey}',1)" style="${done?'background:var(--green-bg);color:var(--green-dark);border-color:rgba(34,197,94,.3);':''}">＋</button>
         </div>
         ${done?'<span class="wg-done-badge">✓ 達成！</span>':''}
       </div>
@@ -3648,11 +3782,12 @@ function selectResetDay(day, el) {
 }
 
 function openWeeklyModal() {
+  resetWeeklyModal();
   document.getElementById('wg-name').value='';
   document.getElementById('wg-unit').value='';
   document.getElementById('wg-target').value='';
   document.getElementById('wg-emoji').value='🎨';
-  document.getElementById('wg-color').value='#1d4ed8';
+  document.getElementById('wg-color').value='#4f46e5';
   document.getElementById('wg-reset-day').value='1';
   document.getElementById('wg-reset-preview').textContent='毎週月曜日にリセットされます';
   document.querySelectorAll('.color-pick').forEach(b=>b.classList.remove('active-color'));
@@ -3696,25 +3831,6 @@ function deleteWeeklyGoal(key) {
   if(!confirm('この目標を削除しますか？')) return;
   fbRemove('weeklyGoals/' + key);
   toast('削除しました');
-}
-
-function toggleMobileMenu(){
-  const menu = document.getElementById('mobile-menu');
-  menu.classList.toggle('open');
-  // show/hide admin item
-  const mmUm = document.getElementById('mm-usermgmt');
-  if(mmUm) mmUm.style.display = window._myRole==='admin'?'':'none';
-  // close when clicking outside
-  if(menu.classList.contains('open')){
-    setTimeout(()=>{
-      document.addEventListener('click', function handler(e){
-        if(!menu.contains(e.target)&&!document.getElementById('mobile-menu-btn').contains(e.target)){
-          menu.classList.remove('open');
-          document.removeEventListener('click', handler);
-        }
-      });
-    }, 10);
-  }
 }
 
 function showPage(id){
