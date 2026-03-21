@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CANVAS — Design Collab</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- フォント：ヒラギノ（OS標準）を使用 -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%234f46e5'/%3E%3Cstop offset='100%25' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='12' y='12' width='16' height='16' rx='4' fill='white'/%3E%3Crect x='36' y='12' width='16' height='16' rx='4' fill='white' opacity='.8'/%3E%3Crect x='12' y='36' width='16' height='16' rx='4' fill='white' opacity='.8'/%3E%3Crect x='36' y='36' width='16' height='16' rx='4' fill='white' opacity='.6'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%234f46e5'/%3E%3Cstop offset='100%25' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='12' y='12' width='16' height='16' rx='4' fill='white'/%3E%3Crect x='36' y='12' width='16' height='16' rx='4' fill='white' opacity='.8'/%3E%3Crect x='12' y='36' width='16' height='16' rx='4' fill='white' opacity='.8'/%3E%3Crect x='36' y='36' width='16' height='16' rx='4' fill='white' opacity='.6'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#4f46e5">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -115,33 +118,75 @@ function initListeners() {
 
 <style>
 :root {
-  --bg:#f7f6f2; --surface:#fff; --surface2:#f2f1ed; --surface3:#eae9e4;
-  --border:rgba(0,0,0,.07); --border2:rgba(0,0,0,.13);
-  --text:#18181a; --muted:#7a7a74; --muted2:#b8b8b0;
-  --accent:#1d4ed8; --accent-bg:#eff4ff; --accent-light:#dbeafe;
-  --green:#16a34a; --green-bg:#f0fdf4;
-  --red:#dc2626;   --red-bg:#fef2f2;
-  --amber:#d97706; --amber-bg:#fffbeb;
-  --purple:#7c3aed;--purple-bg:#f5f3ff;
-  --teal:#0d9488;  --teal-bg:#f0fdfa;
-  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:0 4px 16px rgba(0,0,0,.09),0 1px 4px rgba(0,0,0,.04);
-  --radius:10px;
-  --font-s:'DM Sans',sans-serif;
-  --font-j:'Noto Sans JP',sans-serif;
+  /* ── Duolingo-inspired palette ── */
+  --bg:#f0f4ff;
+  --surface:#fff;
+  --surface2:#f5f7ff;
+  --surface3:#e8edff;
+  --border:rgba(80,100,200,.1);
+  --border2:rgba(80,100,200,.18);
+  --text:#2d2d3a;
+  --muted:#7b7b9a;
+  --muted2:#b0b0c8;
+
+  /* Brand colors */
+  --accent:#4f46e5;
+  --accent-bg:#eef2ff;
+  --accent-light:#c7d2fe;
+
+  --green:#22c55e;
+  --green-bg:#f0fdf4;
+  --green-dark:#16a34a;
+
+  --red:#ef4444;
+  --red-bg:#fef2f2;
+
+  --amber:#f59e0b;
+  --amber-bg:#fffbeb;
+
+  --purple:#a855f7;
+  --purple-bg:#faf5ff;
+
+  --teal:#14b8a6;
+  --teal-bg:#f0fdfa;
+
+  --coral:#f97316;
+  --coral-bg:#fff7ed;
+
+  --pink:#ec4899;
+  --pink-bg:#fdf2f8;
+
+  /* Shadows — softer, more colorful */
+  --shadow:0 2px 8px rgba(79,70,229,.08),0 1px 3px rgba(0,0,0,.04);
+  --shadow-md:0 6px 24px rgba(79,70,229,.12),0 2px 8px rgba(0,0,0,.06);
+  --shadow-lg:0 12px 40px rgba(79,70,229,.16),0 4px 12px rgba(0,0,0,.08);
+
+  /* Radius — rounder! */
+  --radius:16px;
+  --radius-sm:10px;
+  --radius-xl:24px;
+
+  --font-s:'Hiragino Sans','ヒラギノ角ゴ ProN W3','Hiragino Kaku Gothic ProN','-apple-system','BlinkMacSystemFont','Yu Gothic','游ゴシック',sans-serif;
+  --font-j:'Hiragino Sans','ヒラギノ角ゴ ProN W3','Hiragino Kaku Gothic ProN','-apple-system','BlinkMacSystemFont','Yu Gothic','游ゴシック',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:14px;line-height:1.6;min-height:100vh;}
+/* Global animation */
+@keyframes pop{0%{transform:scale(.92);opacity:.7}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+@keyframes bounce-in{0%{transform:scale(.8) translateY(8px);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1) translateY(0);opacity:1}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.pop-in{animation:pop .25s ease forwards;}
 
 /* ── Login ── */
-#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:28px;background:var(--bg);}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px 40px;text-align:center;box-shadow:var(--shadow-md);max-width:380px;width:90%;}
-.login-logo{width:52px;height:52px;background:var(--text);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
-.login-logo svg{width:26px;height:26px;fill:white;}
-.login-card h1{font-family:var(--font-s);font-size:22px;font-weight:500;margin-bottom:6px;}
-.login-card p{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
-.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;cursor:pointer;font-size:14px;font-family:var(--font-j);font-weight:500;transition:all .15s;color:var(--text);}
-.google-btn:hover{background:var(--surface2);border-color:var(--accent);}
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:28px;background:linear-gradient(135deg,#eef2ff 0%,#f0f4ff 50%,#faf5ff 100%);}
+.login-card{background:var(--surface);border:2px solid var(--border2);border-radius:var(--radius-xl);padding:44px 36px;text-align:center;box-shadow:var(--shadow-lg);max-width:380px;width:90%;animation:bounce-in .4s ease;}
+.login-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 4px 16px rgba(79,70,229,.35);}
+.login-logo svg{width:30px;height:30px;fill:white;}
+.login-card h1{font-family:var(--font-s);font-size:26px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.login-card p{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.7;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 20px;background:var(--surface);border:2px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-size:15px;font-family:var(--font-j);font-weight:600;transition:all .2s;color:var(--text);}
+.google-btn:hover{background:var(--surface2);border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.google-btn:active{transform:scale(.97);}
 .google-btn svg{width:20px;height:20px;flex-shrink:0;}
 
 /* ── Pending Screen ── */
@@ -158,65 +203,66 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 
 /* ── App layout ── */
 #app{display:none;min-height:100vh;}
-.sidebar{width:224px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;}
-.logo-area{padding:20px 18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.logo-mark{width:30px;height:30px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.logo-mark svg{width:14px;height:14px;fill:white;}
-.logo-text{font-family:var(--font-s);font-size:14px;font-weight:500;}
+.sidebar{width:232px;min-height:100vh;background:var(--surface);border-right:2px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;}
+.logo-area{padding:22px 18px 16px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(79,70,229,.3);}
+.logo-mark svg{width:16px;height:16px;fill:white;}
+.logo-text{font-family:var(--font-s);font-size:15px;font-weight:700;color:var(--accent);}
 .logo-text small{display:block;font-size:10px;color:var(--muted);font-weight:400;}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--muted2);margin-left:auto;flex-shrink:0;}
-.sync-dot.live{background:var(--green);box-shadow:0 0 5px var(--green);}
-.nav{padding:12px 8px;flex:1;overflow-y:auto;}
-.nav-sec{font-size:10px;color:var(--muted);padding:8px 10px 4px;letter-spacing:.07em;text-transform:uppercase;font-family:var(--font-s);}
-.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-j);}
-.nav-item:hover{background:var(--surface2);color:var(--text);}
-.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500;}
-.nav-icon{width:15px;height:15px;flex-shrink:0;opacity:.75;}
-.notif-badge{background:var(--red);color:white;border-radius:10px;font-size:10px;padding:1px 5px;margin-left:auto;font-family:var(--font-s);}
-.user-area{padding:12px;border-top:1px solid var(--border);}
-.user-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;background:var(--surface2);}
-.user-av{width:30px;height:30px;border-radius:50%;object-fit:cover;background:var(--accent-bg);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted2);margin-left:auto;flex-shrink:0;}
+.sync-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+.nav{padding:10px 8px;flex:1;overflow-y:auto;}
+.nav-sec{font-size:10px;color:var(--muted);padding:10px 12px 4px;letter-spacing:.07em;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-j);font-weight:500;}
+.nav-item:hover{background:var(--accent-bg);color:var(--accent);}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:700;box-shadow:inset 3px 0 0 var(--accent);}
+.nav-icon{width:16px;height:16px;flex-shrink:0;}
+.notif-badge{background:var(--red);color:white;border-radius:10px;font-size:10px;padding:2px 6px;margin-left:auto;font-weight:700;}
+.user-area{padding:12px;border-top:2px solid var(--border);}
+.user-row{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--accent-bg);}
+.user-av{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-light);}
 .user-info{flex:1;min-width:0;}
-.user-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent);}
 .user-role{font-size:10px;color:var(--muted);}
-.logout-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:5px;transition:all .12s;}
+.logout-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:5px;border-radius:6px;transition:all .12s;}
 .logout-btn:hover{color:var(--red);background:var(--red-bg);}
 
 /* ── Main ── */
-.main{margin-left:224px;flex:1;min-height:100vh;}
-.topbar{padding:14px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:50;}
-.topbar-title{font-family:var(--font-s);font-size:14px;font-weight:500;}
+.main{margin-left:232px;flex:1;min-height:100vh;}
+.topbar{padding:14px 24px;border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:var(--font-s);font-size:16px;font-weight:700;color:var(--text);}
 .topbar-actions{display:flex;gap:8px;}
-.page{display:none;padding:26px;}
+.page{display:none;padding:20px 24px;}
 .page.active{display:block;}
 
 /* ── Buttons ── */
-.btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-family:var(--font-j);transition:all .12s;font-weight:500;}
-.btn-primary{background:var(--text);color:#fff;}
-.btn-primary:hover{background:#2d2d30;}
-.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
-.btn-ghost:hover{background:var(--surface2);}
-.btn-accent{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(29,78,216,.15);}
+.btn{padding:9px 18px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:13px;font-family:var(--font-j);transition:all .15s;font-weight:700;letter-spacing:.01em;}
+.btn:active{transform:scale(.96);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;box-shadow:0 3px 10px rgba(79,70,229,.35);}
+.btn-primary:hover{box-shadow:0 5px 16px rgba(79,70,229,.45);transform:translateY(-1px);}
+.btn-ghost{background:var(--surface);color:var(--text);border:2px solid var(--border2);}
+.btn-ghost:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
+.btn-accent{background:var(--accent-bg);color:var(--accent);border:2px solid var(--accent-light);}
 .btn-accent:hover{background:var(--accent-light);}
-.btn-sm{padding:5px 10px;font-size:12px;}
-.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-danger{background:var(--red-bg);color:var(--red);border:2px solid rgba(239,68,68,.2);}
 .btn-danger:hover{background:#fee2e2;}
-.btn-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(22,163,74,.15);}
+.btn-green{background:var(--green-bg);color:var(--green-dark);border:2px solid rgba(34,197,94,.2);}
 .btn-green:hover{background:#dcfce7;}
-.btn-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.15);}
+.btn-amber{background:var(--amber-bg);color:var(--amber);border:2px solid rgba(245,158,11,.2);}
 
 /* ── Stats ── */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
-.stat-label{font-size:10px;color:var(--muted);font-family:var(--font-s);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}
-.stat-value{font-family:var(--font-s);font-size:26px;font-weight:300;line-height:1;}
-.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.stat-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+.stat-label{font-size:10px;color:var(--muted);font-family:var(--font-s);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+.stat-value{font-family:var(--font-s);font-size:30px;font-weight:700;line-height:1;color:var(--text);}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px;font-weight:500;}
 
 /* ── Event cards ── */
 .events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-.ev-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);}
-.ev-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
-.ev-stripe{height:4px;}
+.ev-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:var(--shadow);}
+.ev-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);}
+.ev-stripe{height:6px;}
 .ev-body{padding:16px 16px 12px;}
 .ev-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
 .ev-badges{display:flex;gap:5px;flex-wrap:wrap;}
@@ -232,9 +278,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .ev-meta{display:flex;gap:10px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
 .prog-wrap{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--font-s);}
-.prog-bar{height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.prog-bar{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;}
 .prog-fill{height:100%;border-radius:2px;transition:width .4s;}
-.ev-foot{padding:9px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
+.ev-foot{padding:10px 16px;border-top:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
 .avatars{display:flex;}
 .av{width:24px;height:24px;border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;margin-right:-7px;overflow:hidden;}
 .av img{width:100%;height:100%;object-fit:cover;}
@@ -246,15 +292,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 
 /* ── Task board ── */
 .task-board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.task-col{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;min-height:340px;}
+.task-col{background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:14px;min-height:340px;}
 .col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
 .col-title{font-size:12px;font-weight:500;font-family:var(--font-s);}
 .col-count{font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:1px 6px;border-radius:10px;}
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:7px;cursor:pointer;transition:all .12s;box-shadow:var(--shadow);position:relative;}
-.task-card:hover{box-shadow:var(--shadow-md);}
+.task-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);position:relative;}
+.task-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .task-card:hover .task-card-actions{opacity:1;}
-.task-card.mine{border-left:3px solid var(--accent);}
-.task-card.others{opacity:.72;}
+.task-card.mine{border-left:4px solid var(--accent);}
+.task-card.others{opacity:.7;}
 /* Task card action buttons (duplicate) */
 .task-card-actions{position:absolute;top:7px;right:7px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
 .task-action-btn{width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .12s;}
@@ -284,18 +330,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .sec-head h2{font-family:var(--font-s);font-size:13px;font-weight:500;}
 .filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
-.chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-s);transition:all .12s;}
-.chip:hover,.chip.active{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.25);}
+.chip{padding:6px 14px;border-radius:20px;border:2px solid var(--border2);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-s);transition:all .15s;font-weight:600;}
+.chip:hover,.chip.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
 
 /* ── Modals ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:200;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-md);}
-.modal-title{font-family:var(--font-s);font-size:15px;font-weight:500;margin-bottom:20px;}
+.modal{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius-xl);padding:28px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+.modal-title{font-family:var(--font-s);font-size:17px;font-weight:700;margin-bottom:20px;color:var(--text);}
 .fg{margin-bottom:13px;}
 .fl{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;display:block;font-family:var(--font-s);}
-.fi{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:9px 11px;color:var(--text);font-family:var(--font-j);font-size:13px;outline:none;transition:border-color .12s;}
-.fi:focus{border-color:var(--accent);background:#fff;}
+.fi{width:100%;background:var(--surface2);border:2px solid var(--border2);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-family:var(--font-j);font-size:13px;outline:none;transition:all .15s;}
+.fi:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.12);}
 select.fi{cursor:pointer;}
 textarea.fi{resize:vertical;min-height:70px;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
@@ -303,9 +349,9 @@ textarea.fi{resize:vertical;min-height:70px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 
 /* ── Tabs ── */
-.tab-bar{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:2px;margin-bottom:18px;}
-.tab-btn{flex:1;padding:6px;border-radius:6px;border:none;background:none;font-size:12px;font-family:var(--font-j);cursor:pointer;color:var(--muted);transition:all .12s;font-weight:500;}
-.tab-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+.tab-bar{display:flex;background:var(--surface2);border-radius:var(--radius-sm);padding:4px;gap:3px;margin-bottom:18px;border:2px solid var(--border);}
+.tab-btn{flex:1;padding:7px;border-radius:8px;border:none;background:none;font-size:12px;font-family:var(--font-j);cursor:pointer;color:var(--muted);transition:all .15s;font-weight:600;}
+.tab-btn.active{background:var(--surface);color:var(--accent);box-shadow:var(--shadow);font-weight:700;}
 
 /* ── AI Parse ── */
 .ai-parse-area{background:var(--accent-bg);border:1.5px dashed rgba(29,78,216,.3);border-radius:10px;padding:14px;margin-bottom:16px;}
@@ -394,14 +440,29 @@ textarea.fi{resize:vertical;min-height:70px;}
 .empty-icon{font-size:28px;margin-bottom:8px;opacity:.3;}
 
 /* ── Toast ── */
-#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;opacity:0;transition:all .25s;z-index:600;pointer-events:none;white-space:nowrap;}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;border-radius:20px;padding:10px 20px;font-size:13px;font-weight:600;opacity:0;transition:all .28s cubic-bezier(.34,1.56,.64,1);z-index:600;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(79,70,229,.4);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
+/* ── Weekly Stats ── */
+.stats-bar-wrap{margin-bottom:16px;}
+.stats-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
+.stats-bar-bg{height:10px;background:var(--surface3);border-radius:5px;overflow:hidden;}
+.stats-bar-fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.week-history-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.week-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.week-history-label{font-size:13px;font-weight:500;}
+.week-history-rate{font-size:12px;font-family:var(--font-s);}
+.team-member-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
+.team-member-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.achievement-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-family:var(--font-s);font-weight:500;}
+.badge-gold{background:#fef3c7;color:#d97706;}
+.badge-silver{background:#f1f5f9;color:#64748b;}
+.badge-bronze{background:#fef2e2;color:#c2702f;}
 /* ── Habit Board ── */
-.theme-banner{background:linear-gradient(135deg,var(--accent-bg) 0%,var(--purple-bg) 100%);border:1px solid rgba(29,78,216,.15);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;}
+.theme-banner{background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);border:2px solid var(--accent-light);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;box-shadow:var(--shadow);}
 .theme-banner-emoji{font-size:40px;line-height:1;margin-bottom:8px;}
 .theme-banner-month{font-size:10px;color:var(--accent);font-family:var(--font-s);font-weight:500;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;}
 .theme-banner-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.3;}
@@ -409,8 +470,8 @@ textarea.fi{resize:vertical;min-height:70px;}
 .theme-banner-edit{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.7);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);font-family:var(--font-j);transition:all .12s;}
 .theme-banner-edit:hover{background:#fff;}
 /* Share cards */
-.share-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
-.share-card:hover{box-shadow:var(--shadow-md);}
+.share-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:all .2s;}
+.share-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .share-card-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--surface2);display:block;}
 .share-card-img-placeholder{width:100%;aspect-ratio:4/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:32px;}
 .share-card-body{padding:12px 14px;}
@@ -491,8 +552,8 @@ textarea.fi{resize:vertical;min-height:70px;}
 .fmt-btn:hover{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.3);}
 .fmt-btn.active-tab{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.3);}
 .note-format-hint{font-size:10px;color:var(--muted2);margin-top:4px;line-height:1.6;}
-.note-thread{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow);}
-.note-thread:hover{box-shadow:var(--shadow-md);}
+.note-thread{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:var(--shadow);}
+.note-thread:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .note-thread-head{padding:14px 16px;display:flex;align-items:flex-start;gap:12px;}
 .note-cat-badge{display:inline-flex;align-items:center;font-size:10px;padding:3px 8px;border-radius:4px;font-family:var(--font-s);font-weight:500;white-space:nowrap;flex-shrink:0;}
 .note-cat-議事録{background:#eff4ff;color:#1d4ed8;}
@@ -518,8 +579,8 @@ textarea.fi{resize:vertical;min-height:70px;}
 .note-post-text a:hover{text-decoration:underline;}
 
 /* ── Weekly Work ── */
-.wg-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
-.wg-card:hover{box-shadow:var(--shadow-md);}
+.wg-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:all .2s;}
+.wg-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .wg-stripe{height:4px;}
 .wg-body{padding:16px;}
 .wg-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
@@ -528,14 +589,15 @@ textarea.fi{resize:vertical;min-height:70px;}
 .wg-title{font-size:14px;font-weight:500;line-height:1.3;}
 .wg-sub{font-size:11px;color:var(--muted);margin-top:1px;}
 .wg-prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;font-family:var(--font-s);}
-.wg-prog-bar{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+.wg-prog-bar{height:10px;background:var(--surface3);border-radius:5px;overflow:hidden;margin-bottom:14px;}
 .wg-prog-fill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1);}
 .wg-controls{display:flex;align-items:center;justify-content:space-between;}
 .wg-counter{display:flex;align-items:center;gap:10px;}
-.wg-count-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1;}
-.wg-count-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
-.wg-count-val{font-family:var(--font-s);font-size:22px;font-weight:300;min-width:32px;text-align:center;}
-.wg-done-badge{background:var(--green-bg);color:var(--green);border:1px solid rgba(22,163,74,.2);border-radius:20px;font-size:11px;padding:3px 10px;font-family:var(--font-s);font-weight:500;}
+.wg-count-btn{width:38px;height:38px;border-radius:10px;border:2px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;font-weight:700;}
+.wg-count-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);transform:scale(1.1);}
+.wg-count-btn:active{transform:scale(.9);}
+.wg-count-val{font-family:var(--font-s);font-size:24px;font-weight:700;min-width:36px;text-align:center;color:var(--text);}
+.wg-done-badge{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-radius:20px;font-size:11px;padding:4px 12px;font-weight:700;box-shadow:0 2px 8px rgba(34,197,94,.35);}
 .wg-delete-btn{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:12px;padding:4px 6px;border-radius:5px;transition:all .12s;}
 .wg-delete-btn:hover{color:var(--red);background:var(--red-bg);}
 /* team view */
@@ -571,9 +633,9 @@ textarea.fi{resize:vertical;min-height:70px;}
   /* ── Bottom Navigation ── */
   .bottom-nav{
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
-    background:var(--surface);border-top:1px solid var(--border);
+    background:var(--surface);border-top:2px solid var(--border);
     padding:6px 0 max(6px, env(safe-area-inset-bottom));
-    box-shadow:0 -2px 12px rgba(0,0,0,.06);
+    box-shadow:0 -4px 20px rgba(79,70,229,.08);
   }
   .bn-item{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -582,7 +644,7 @@ textarea.fi{resize:vertical;min-height:70px;}
     transition:color .12s;position:relative;min-width:0;
   }
   .bn-item svg{width:19px;height:19px;}
-  .bn-item.active{color:var(--accent);}
+  .bn-item.active{color:var(--accent);font-weight:700;}
   .bn-item svg{width:20px;height:20px;}
   .bn-badge{
     position:absolute;top:2px;right:calc(50% - 16px);
@@ -606,7 +668,7 @@ textarea.fi{resize:vertical;min-height:70px;}
   /* ── Stats ── */
   .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
   .stat-card{padding:12px;}
-  .stat-value{font-size:22px;}
+  .stat-value{font-size:24px;}
 
   /* ── Events grid ── */
   .events-grid{grid-template-columns:1fr;gap:10px;}
@@ -628,9 +690,10 @@ textarea.fi{resize:vertical;min-height:70px;}
   /* ── Modals — full screen on mobile ── */
   .overlay{padding:0;align-items:flex-end;}
   .modal{
-    border-radius:20px 20px 0 0;max-height:92vh;
-    padding:20px 18px 24px;
+    border-radius:24px 24px 0 0;max-height:92vh;
+    padding:22px 18px max(24px,env(safe-area-inset-bottom));
     width:100%;max-width:100%;
+    animation:bounce-in .3s ease;
   }
   .modal-title{font-size:14px;}
   .grid2,.grid3{grid-template-columns:1fr;}
@@ -717,6 +780,7 @@ textarea.fi{resize:vertical;min-height:70px;}
   .mm-item.danger:hover{background:var(--red-bg);}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -980,28 +1044,41 @@ textarea.fi{resize:vertical;min-height:70px;}
           <button class="btn btn-primary" onclick="openWeeklyModal()">＋ 目標を追加</button>
         </div>
       </div>
-      <div style="padding:20px">
-        <!-- 今週の期間 & リセット情報 -->
-        <div id="weekly-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
-          <div>
-            <div style="font-family:var(--font-s);font-size:13px;font-weight:500;" id="weekly-range-label">今週</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="weekly-reset-label">次のリセットまで —</div>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <button class="chip active" id="wv-personal" onclick="setWeeklyView('personal',this)">自分</button>
-            <button class="chip" id="wv-team" onclick="setWeeklyView('team',this)">チーム全員</button>
-          </div>
+      <div style="padding:16px 16px 20px;">
+
+        <!-- タブ切り替え -->
+        <div class="tab-bar" style="margin-bottom:16px;">
+          <button class="tab-btn active" id="wtab-current" onclick="switchWeeklyTab('current',this)">今週</button>
+          <button class="tab-btn" id="wtab-history" onclick="switchWeeklyTab('history',this)">過去の記録</button>
+          <button class="tab-btn" id="wtab-team" onclick="switchWeeklyTab('team',this)">チーム実績</button>
         </div>
-        <!-- Goals grid -->
-        <div id="weekly-goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
-        <!-- History -->
-        <div style="margin-top:28px;">
-          <div class="sec-head"><h2>先週の記録</h2></div>
-          <div id="weekly-history"></div>
+
+        <!-- 今週タブ -->
+        <div id="weekly-pane-current">
+          <div id="weekly-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-family:var(--font-s);font-size:13px;font-weight:500;" id="weekly-range-label">今週</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="weekly-reset-label">次のリセットまで —</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="chip active" id="wv-personal" onclick="setWeeklyView('personal',this)">自分</button>
+              <button class="chip" id="wv-team" onclick="setWeeklyView('team',this)">チーム全員</button>
+            </div>
+          </div>
+          <div id="weekly-goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
+        </div>
+
+        <!-- 過去の記録タブ -->
+        <div id="weekly-pane-history" style="display:none;">
+          <div id="weekly-history-content"></div>
+        </div>
+
+        <!-- チーム実績タブ -->
+        <div id="weekly-pane-team" style="display:none;">
+          <div id="weekly-team-content"></div>
         </div>
       </div>
     </div>
-
     <!-- User Management -->
     <div id="page-usermgmt" class="page">
       <div class="topbar">
@@ -1349,9 +1426,37 @@ textarea.fi{resize:vertical;min-height:70px;}
       </div>
     </div>
     <div class="fg"><label class="fl">メモ</label><textarea class="fi" id="tk-note" style="min-height:54px;"></textarea></div>
+    <div style="background:var(--accent-bg);border:1px solid rgba(29,78,216,.15);border-radius:8px;padding:10px 12px;margin-bottom:13px;display:flex;align-items:center;gap:9px;">
+      <input type="checkbox" id="tk-is-template" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;">
+      <div>
+        <label for="tk-is-template" style="font-size:13px;cursor:pointer;font-weight:500;">テンプレとして登録</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">ONにするとメンバー一括割り当てに使えます（担当者不要）</div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOv('ov-task')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveTask()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TEMPLATE ASSIGN MODAL ── -->
+<div class="overlay" id="ov-assign-template">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">テンプレタスクを割り当て</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">選択したメンバーに、このイベントのテンプレタスクを一括コピーします。</div>
+    <div class="fg">
+      <label class="fl">割り当てるメンバー</label>
+      <div id="assign-member-list" style="display:flex;gap:7px;flex-wrap:wrap;padding:6px 0;"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">テンプレタスク確認</label>
+      <div id="assign-template-list" style="background:var(--surface2);border-radius:8px;padding:10px;"></div>
+    </div>
+    <input type="hidden" id="assign-event-key">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-assign-template')">キャンセル</button>
+      <button class="btn btn-primary" onclick="executeTemplateAssign()">割り当て実行</button>
     </div>
   </div>
 </div>
@@ -1946,10 +2051,20 @@ function saveTask(){
   const due=document.getElementById('tk-due').value;
   const pri=document.getElementById('tk-pri').value;
   const note=document.getElementById('tk-note').value;
+  const isTemplate=document.getElementById('tk-is-template')?.checked||false;
+
+  if(isTemplate){
+    // Save as template (no assignee needed)
+    fbPush('tasks',{name,eventKey:evKey,assigneeUid:'',due,priority:pri,status:'未着手',note,isTemplate:true,createdBy:window._me?.uid||''});
+    toast(`テンプレ「${name}」を登録しました`);
+    closeOv('ov-task');
+    return;
+  }
+
   const checked=[...document.querySelectorAll('#tk-assignees input:checked')].map(i=>i.value);
-  if(!checked.length){ toast('担当者を選んでください'); return; }
+  if(!checked.length){ toast('担当者を選んでください（またはテンプレとして登録）'); return; }
   checked.forEach(uid=>{
-    fbPush('tasks',{name,eventKey:evKey,assigneeUid:uid,due,priority:pri,status:'未着手',note,createdBy:window._me?.uid||''});
+    fbPush('tasks',{name,eventKey:evKey,assigneeUid:uid,due,priority:pri,status:'未着手',note,isTemplate:false,createdBy:window._me?.uid||''});
   });
   toast(`${checked.length}件のタスクを追加しました`);
   pushNotif('タスク追加',`「${name}」が${checked.length}名に割り当てられました`);
@@ -1973,14 +2088,17 @@ function openEvDetail(key){
     { id:'criteria',label:'審査基準・テーマ',content:e.criteria||'<span style="color:var(--muted)">未入力</span>'},
     { id:'format', label:'提出物・フォーマット',content:e.format||'<span style="color:var(--muted)">未入力</span>'},
     { id:'notes',  label:'メモ・備考',content:e.notes||'<span style="color:var(--muted)">未入力</span>'},
-    { id:'tasks',  label:`タスク（${tasks.length}件）`,
-      content: tasks.length
+    { id:'tasks',  label:`タスク（${tasks.filter(t=>!t.isTemplate).length}件）`,
+      content: tasks.filter(t=>!t.isTemplate).length
         ? `<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">
             <button class="chip active" id="ev-tk-all" onclick="filterEvTasks('${key}','all',this)">全員</button>
             <button class="chip" id="ev-tk-mine" onclick="filterEvTasks('${key}','mine',this)">自分のみ</button>
           </div>
-          <div id="ev-tk-list">${renderEvTaskList(tasks,myId,'all')}</div>`
+          <div id="ev-tk-list">${renderEvTaskList(tasks.filter(t=>!t.isTemplate),myId,'all')}</div>`
         : '<span style="color:var(--muted);font-size:13px;">タスクなし</span>'
+    },
+    { id:'templates', label:`テンプレ（${tasks.filter(t=>t.isTemplate).length}件）`,
+      content: buildTemplateTabContent(key, tasks.filter(t=>t.isTemplate), e)
     }
   ];
 
@@ -3083,6 +3201,245 @@ function saveTheme() {
   closeOv('ov-theme');
 }
 
+// ── Weekly Tab System ──
+let _weeklyTab = 'current';
+let _weeklyChartInstance = null;
+
+function switchWeeklyTab(tab, el) {
+  _weeklyTab = tab;
+  ['current','history','team'].forEach(t => {
+    const pane = document.getElementById('weekly-pane-' + t);
+    const btn  = document.getElementById('wtab-' + t);
+    if(pane) pane.style.display = t === tab ? '' : 'none';
+    if(btn)  btn.classList.toggle('active', t === tab);
+  });
+  if(tab === 'history') renderWeeklyHistory2();
+  if(tab === 'team')    renderWeeklyTeam();
+}
+
+// ── Past records (multiple weeks) ──
+function renderWeeklyHistory2() {
+  const el = document.getElementById('weekly-history-content');
+  if(!el) return;
+  const myId  = window._me?.uid;
+  const goals = (window._data.weeklyGoals||[]).filter(g => g.uid === myId);
+  const logs  = window._data.weeklyLogs || {};
+
+  if(!goals.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><p>目標がありません</p></div>';
+    return;
+  }
+
+  // Build past 6 weeks per goal
+  let html = '';
+  goals.forEach(g => {
+    const resetDay = g.resetDay ?? 1;
+    html += `<div class="week-history-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">${g.emoji||'🎨'}</span>
+        <div>
+          <div style="font-size:13px;font-weight:500;">${g.name}</div>
+          <div style="font-size:11px;color:var(--muted);">目標 ${g.target} ${g.unit} / 週</div>
+        </div>
+      </div>`;
+
+    // Past 6 weeks
+    const weeks = [];
+    for(let w = 0; w < 6; w++) {
+      const d = new Date();
+      d.setDate(d.getDate() - w * 7);
+      const wk = getWeekKeyForDay(d, resetDay);
+      const logKey = myId + '_' + wk + '_' + g._key;
+      const count = logs[logKey]?.count || 0;
+      const pct = Math.min(100, Math.round(count / g.target * 100));
+      const startD = new Date(wk);
+      const label = w === 0 ? '今週' : `${startD.getMonth()+1}/${startD.getDate()}〜`;
+      weeks.push({label, count, pct, target: g.target, unit: g.unit});
+    }
+    weeks.reverse(); // oldest first
+
+    weeks.forEach(w => {
+      const color = w.pct >= 100 ? 'var(--green)' : w.pct >= 50 ? g.color||'#1d4ed8' : 'var(--muted2)';
+      html += `<div class="stats-bar-wrap">
+        <div class="stats-bar-label">
+          <span style="color:var(--muted);font-size:11px;">${w.label}</span>
+          <span style="font-size:11px;font-family:var(--font-s);color:${w.pct>=100?'var(--green)':'var(--text)'};">${w.count}/${w.target}${w.unit} ${w.pct>=100?'✓':w.pct+'%'}</span>
+        </div>
+        <div class="stats-bar-bg">
+          <div class="stats-bar-fill" style="width:${w.pct}%;background:${color};"></div>
+        </div>
+      </div>`;
+    });
+
+    // Streak calculation
+    let streak = 0;
+    for(let w = 0; w < 8; w++) {
+      const d = new Date();
+      d.setDate(d.getDate() - w * 7);
+      const wk = getWeekKeyForDay(d, resetDay);
+      const logKey = myId + '_' + wk + '_' + g._key;
+      const count = logs[logKey]?.count || 0;
+      if(count >= g.target) streak++;
+      else break;
+    }
+    if(streak > 0) {
+      html += `<div style="margin-top:8px;text-align:right;font-size:12px;color:var(--amber);">🔥 ${streak}週連続達成中！</div>`;
+    }
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+// ── Team achievement view ──
+function renderWeeklyTeam() {
+  const el = document.getElementById('weekly-team-content');
+  if(!el) return;
+  const goals   = window._data.weeklyGoals || [];
+  const logs    = window._data.weeklyLogs  || {};
+  const users   = window._data.users;
+  const myId    = window._me?.uid;
+
+  if(!goals.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>まだ目標がありません</p></div>';
+    return;
+  }
+
+  // Group by user
+  const byUser = {};
+  goals.forEach(g => {
+    if(!byUser[g.uid]) byUser[g.uid] = { goals:[], totalDone:0, totalGoals:0 };
+    const resetDay = g.resetDay ?? 1;
+    const wk = getThisWeekKeyForGoal(resetDay);
+    const logKey = g.uid + '_' + wk + '_' + g._key;
+    const count = (logs[logKey]?.count) || 0;
+    const done = count >= g.target;
+    byUser[g.uid].goals.push({ ...g, count, done });
+    byUser[g.uid].totalDone  += done ? 1 : 0;
+    byUser[g.uid].totalGoals += 1;
+  });
+
+  // Sort by achievement rate desc
+  const sorted = Object.entries(byUser).sort(([,a],[,b]) => {
+    const ra = a.totalGoals ? a.totalDone/a.totalGoals : 0;
+    const rb = b.totalGoals ? b.totalDone/b.totalGoals : 0;
+    return rb - ra;
+  });
+
+  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">今週の達成状況 — 全${sorted.length}名</div>`;
+
+  sorted.forEach(([uid, data], rank) => {
+    const u = users[uid];
+    const rate = data.totalGoals ? Math.round(data.totalDone/data.totalGoals*100) : 0;
+    const isMe = uid === myId;
+    const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `${rank+1}.`;
+    const avHTML = u?.photo
+      ? `<img src="${u.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:32px;height:32px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;">${initials(u?.name||'?')}</div>`;
+
+    html += `<div class="team-member-card" style="${isMe?'border-color:var(--accent);':''}">
+      <div class="team-member-head">
+        <span style="font-size:16px;min-width:24px;">${medal}</span>
+        ${avHTML}
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">${u?.name||'—'}${isMe?' (自分)':''}</div>
+          <div style="font-size:11px;color:var(--muted);">${data.totalDone}/${data.totalGoals}個達成</div>
+        </div>
+        <div style="font-size:18px;font-weight:600;font-family:var(--font-s);color:${rate===100?'var(--green)':rate>=50?'var(--accent)':'var(--muted)'};">${rate}%</div>
+      </div>
+      <!-- Per-goal mini bars -->
+      ${data.goals.map(g => {
+        const pct = Math.min(100, Math.round(g.count/g.target*100));
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <span style="font-size:13px;width:20px;text-align:center;">${g.emoji||'🎨'}</span>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
+              <span>${g.name}</span>
+              <span>${g.count}/${g.target}${g.unit}</span>
+            </div>
+            <div class="stats-bar-bg" style="height:5px;">
+              <div class="stats-bar-fill" style="width:${pct}%;background:${g.done?'var(--green)':g.color||'#1d4ed8'};"></div>
+            </div>
+          </div>
+          ${g.done?'<span style="font-size:12px;">✅</span>':'<span style="width:16px;"></span>'}
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  // Weekly chart using Chart.js
+  html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:4px;">
+    <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">チーム達成率 — 過去4週</div>
+    <canvas id="weekly-team-chart" style="max-height:200px;"></canvas>
+  </div>`;
+
+  el.innerHTML = html;
+
+  // Draw chart after DOM update
+  setTimeout(() => drawTeamChart(sorted, logs), 50);
+}
+
+function drawTeamChart(sorted, logs) {
+  const canvas = document.getElementById('weekly-team-chart');
+  if(!canvas || !window.Chart) return;
+  if(_weeklyChartInstance) { _weeklyChartInstance.destroy(); _weeklyChartInstance = null; }
+
+  // Build 4 weeks of team avg achievement
+  const weekLabels = [];
+  const weekData   = [];
+  for(let w = 3; w >= 0; w--) {
+    const d = new Date();
+    d.setDate(d.getDate() - w * 7);
+    const wk = getWeekKeyForDay(d, 1);
+    const startD = new Date(wk);
+    weekLabels.push(w===0 ? '今週' : `${startD.getMonth()+1}/${startD.getDate()}〜`);
+
+    let totalRate = 0, count = 0;
+    sorted.forEach(([uid, data]) => {
+      data.goals.forEach(g => {
+        const wkG = getWeekKeyForDay(new Date(d), g.resetDay??1);
+        const logKey = uid + '_' + wkG + '_' + g._key;
+        const c = (logs[logKey]?.count) || 0;
+        totalRate += Math.min(100, Math.round(c/g.target*100));
+        count++;
+      });
+    });
+    weekData.push(count ? Math.round(totalRate/count) : 0);
+  }
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor = isDark ? '#c2c0b6' : '#7a7a74';
+
+  _weeklyChartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: weekLabels,
+      datasets: [{
+        label: 'チーム平均達成率 (%)',
+        data: weekData,
+        backgroundColor: weekData.map(v => v>=80?'rgba(22,163,74,.7)':v>=50?'rgba(29,78,216,.7)':'rgba(180,180,180,.5)'),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } }
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          ticks: { color: textColor, callback: v => v + '%', stepSize: 25 },
+          grid: { color: isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)' }
+        },
+        x: { ticks: { color: textColor }, grid: { display: false } }
+      }
+    }
+  });
+}
+
 // ─── WEEKLY WORK ───
 let _weeklyView = 'personal';
 
@@ -3129,6 +3486,9 @@ function setWeeklyView(v, el) {
 }
 
 function renderWeekly() {
+  // Only render active tab
+  if(_weeklyTab === 'history') { renderWeeklyHistory2(); return; }
+  if(_weeklyTab === 'team')    { renderWeeklyTeam(); return; }
   const goals = window._data.weeklyGoals;
   const logs  = window._data.weeklyLogs;
   const myId  = window._me?.uid;
@@ -3244,6 +3604,7 @@ function updateWeeklyCount(goalKey, _unused, delta) {
 }
 
 function renderWeeklyHistory() {
+  if(_weeklyTab === 'history') { renderWeeklyHistory2(); return; }
   const logs = window._data.weeklyLogs;
   const myId = window._me?.uid;
   const hist = document.getElementById('weekly-history');
