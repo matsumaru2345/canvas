@@ -398,6 +398,30 @@ textarea.fi{resize:vertical;min-height:70px;}
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
 /* ── Notes ── */
+/* Notion-style rich text rendering */
+.notion-body{font-size:14px;line-height:1.85;color:var(--text);word-break:break-word;}
+.notion-body h1{font-size:20px;font-weight:600;margin:18px 0 6px;line-height:1.3;}
+.notion-body h2{font-size:17px;font-weight:600;margin:16px 0 5px;line-height:1.3;}
+.notion-body h3{font-size:15px;font-weight:600;margin:14px 0 4px;line-height:1.3;}
+.notion-body p{margin:4px 0;}
+.notion-body ul{padding-left:22px;margin:4px 0;}
+.notion-body ol{padding-left:22px;margin:4px 0;}
+.notion-body li{margin:3px 0;line-height:1.75;}
+.notion-body blockquote{border-left:3px solid var(--accent);padding:6px 12px;margin:8px 0;background:var(--accent-bg);border-radius:0 6px 6px 0;color:var(--muted);}
+.notion-body code{background:var(--surface3);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px;color:var(--purple);}
+.notion-body pre{background:var(--surface3);padding:10px 12px;border-radius:8px;overflow-x:auto;margin:8px 0;}
+.notion-body pre code{background:none;padding:0;font-size:12px;}
+.notion-body hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.notion-body a{color:var(--accent);text-decoration:none;}
+.notion-body a:hover{text-decoration:underline;}
+.notion-body strong{font-weight:600;}
+.notion-body em{font-style:italic;color:var(--muted);}
+.notion-body .checkbox-item{display:flex;align-items:flex-start;gap:8px;margin:3px 0;}
+.notion-body .checkbox-item input{margin-top:3px;accent-color:var(--accent);}
+/* edit mode */
+.note-edit-area{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;font-family:var(--font-j);font-size:13px;line-height:1.85;color:var(--text);outline:none;resize:vertical;min-height:180px;transition:border-color .12s;}
+.note-edit-area:focus{border-color:var(--accent);background:#fff;}
+.note-format-hint{font-size:10px;color:var(--muted2);margin-top:4px;line-height:1.6;}
 .note-thread{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow);}
 .note-thread:hover{box-shadow:var(--shadow-md);}
 .note-thread-head{padding:14px 16px;display:flex;align-items:flex-start;gap:12px;}
@@ -2116,7 +2140,61 @@ function renderNotes() {
   }).join('');
 }
 
+// Markdown-like renderer for Notion-style display
+function renderNotionBody(text) {
+  if(!text) return '';
+  const lines = text.split('
+');
+  let html = '';
+  let inUl = false, inOl = false;
+  const closeList = () => {
+    if(inUl){ html += '</ul>'; inUl=false; }
+    if(inOl){ html += '</ol>'; inOl=false; }
+  };
+  lines.forEach(line => {
+    // Heading
+    if(line.startsWith('### ')){ closeList(); html += `<h3>${fmtInline(line.slice(4))}</h3>`; return; }
+    if(line.startsWith('## ')){ closeList(); html += `<h2>${fmtInline(line.slice(3))}</h2>`; return; }
+    if(line.startsWith('# ')){ closeList(); html += `<h1>${fmtInline(line.slice(2))}</h1>`; return; }
+    // Blockquote
+    if(line.startsWith('> ')){ closeList(); html += `<blockquote>${fmtInline(line.slice(2))}</blockquote>`; return; }
+    // HR
+    if(line.match(/^---+$/)){ closeList(); html += '<hr>'; return; }
+    // Checkbox
+    if(line.match(/^- \[( |x)\] /)){ closeList();
+      const checked = line[3]==='x';
+      html += `<div class="checkbox-item"><input type="checkbox" ${checked?'checked':''} disabled>${fmtInline(line.slice(6))}</div>`; return; }
+    // Unordered list
+    if(line.startsWith('- ') || line.startsWith('• ')){ if(!inUl){ if(inOl){html+='</ol>';inOl=false;} html+='<ul>'; inUl=true; } html+=`<li>${fmtInline(line.slice(2))}</li>`; return; }
+    // Ordered list
+    if(line.match(/^\d+\. /)){ if(!inOl){ if(inUl){html+='</ul>';inUl=false;} html+='<ol>'; inOl=true; } html+=`<li>${fmtInline(line.replace(/^\d+\. /,''))}</li>`; return; }
+    // Normal line
+    closeList();
+    if(line.trim()==='') html += '<p style="height:6px;"></p>';
+    else html += `<p>${fmtInline(line)}</p>`;
+  });
+  closeList();
+  return html;
+}
+
+function fmtInline(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>');
+}
+
+let _noteEditMode = false;
+
 function openNoteDetail(key) {
+  _noteEditMode = false;
+  renderNoteDetailModal(key);
+  openOv('ov-note-detail');
+}
+
+function renderNoteDetailModal(key) {
   const n = window._data.notes.find(x=>x._key===key);
   if(!n) return;
   const cat = NOTE_CATS[n.category] || NOTE_CATS['自由メモ'];
@@ -2124,58 +2202,101 @@ function openNoteDetail(key) {
     .map(([k,v])=>({_key:k,...v}))
     .sort((a,b)=>a.createdAt-b.createdAt);
   const u = window._data.users[n.createdBy];
+  const myId = window._me?.uid;
+  const canEdit = n.createdBy === myId;
+
+  const noteDateFmt = n.noteDate ? (() => {
+    const d=new Date(n.noteDate+'T00:00:00');
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  })() : '';
 
   const renderPost = p => {
     const pu = window._data.users[p.uid];
     const avHTML = pu?.photo
       ? `<img src="${pu.photo}">`
       : `<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
-    // linkify URLs
-    const linked = (p.text||'').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
+    const linked = fmtInline(p.text||'');
+    const isMe = p.uid === myId;
     return `<div class="note-post">
       <div class="note-post-av">${avHTML}</div>
       <div class="note-post-body">
         <div class="note-post-meta">
           <span class="note-post-name">${pu?.name||'—'}</span>
           <span class="note-post-time">${timeAgo(p.createdAt)}</span>
+          ${isMe?`<button onclick="deleteNotePost('${key}','${p._key}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted2);font-size:10px;padding:2px 4px;border-radius:4px;" title="削除">✕</button>`:''}
         </div>
         <div class="note-post-text">${linked}</div>
       </div>
     </div>`;
   };
 
-  const noteDateFmt = n.noteDate ? (() => { const d=new Date(n.noteDate+'T00:00:00'); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`; })() : '';
+  // Edit mode UI
+  const editModeBody = _noteEditMode ? `
+    <div style="margin-bottom:12px;">
+      <label class="fl">タイトル</label>
+      <input class="fi" id="ned-title" value="${(n.title||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;"><label class="fl">日付</label><input type="date" class="fi" id="ned-date" value="${n.noteDate||''}"></div>
+        <div style="flex:1;"><label class="fl">参加者</label><input class="fi" id="ned-members" value="${(n.members||'').replace(/"/g,'&quot;')}" placeholder="田中、鈴木…"></div>
+      </div>
+      <label class="fl">内容</label>
+      <textarea class="note-edit-area" id="ned-body">${(n.body||'').replace(/</g,'&lt;')}</textarea>
+      <div class="note-format-hint">
+        # 見出し1 &nbsp;## 見出し2 &nbsp;**太字** &nbsp;*斜体* &nbsp;\`コード\`<br>
+        - 箇条書き &nbsp;1. 番号付き &nbsp;> 引用 &nbsp;--- 区切り線
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;renderNoteDetailModal('${key}')">キャンセル</button>
+      <button class="btn btn-primary btn-sm" onclick="updateNote('${key}')">保存</button>
+    </div>` : `
+    ${n.body?`<div class="notion-body" style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:16px;">${renderNotionBody(n.body)}</div>`:''}`;
+
   document.getElementById('note-detail-body').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-      <div style="flex:1;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+      <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap;">
           <span class="note-cat-badge ${cat.cls}">${cat.icon} ${n.category}</span>
           ${n.noteDate?`<span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:4px;">📅 ${noteDateFmt}</span>`:''}
         </div>
-        <h2 style="font-size:16px;font-weight:500;line-height:1.4;">${n.title}</h2>
+        <h2 style="font-size:17px;font-weight:600;line-height:1.4;">${n.title}</h2>
         <div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;">
           <span>${u?.name||'—'} · ${timeAgo(n.createdAt)}</span>
           ${n.members?`<span>👥 ${n.members}</span>`:''}
         </div>
       </div>
-      <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')" style="flex-shrink:0;margin-left:12px;">削除</button>
+      <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
+        ${canEdit&&!_noteEditMode?`<button class="btn btn-ghost btn-sm" onclick="_noteEditMode=true;renderNoteDetailModal('${key}')">編集</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')">削除</button>
+      </div>
     </div>
 
-    ${n.body?`<div style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.8;margin-bottom:16px;white-space:pre-wrap;word-break:break-word;">${(n.body).replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" style="color:var(--accent);">$1</a>')}</div>`:''}
+    ${editModeBody}
 
     <div style="border-top:1px solid var(--border);padding-top:14px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">投稿 (${posts.length}件)</div>
-      <div id="note-posts-thread-${key}" style="max-height:380px;overflow-y:auto;margin-bottom:14px;">
-        ${posts.length ? posts.map(renderPost).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">まだ投稿がありません。最初のコメントを書こう！</div>'}
+      <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">コメント (${posts.length}件)</div>
+      <div id="note-posts-thread-${key}" style="max-height:300px;overflow-y:auto;margin-bottom:14px;">
+        ${posts.length ? posts.map(renderPost).join('') : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">まだコメントがありません</div>'}
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;">
-        <textarea id="note-post-input-${key}" class="fi" placeholder="コメント、アイデア、URLなどを入力…" style="flex:1;min-height:60px;resize:none;font-size:13px;" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){postNoteComment('${key}');event.preventDefault();}"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="postNoteComment('${key}')">投稿</button>
+        <textarea id="note-post-input-${key}" class="fi" placeholder="コメント、アイデア、URLなど…" style="flex:1;min-height:54px;resize:none;font-size:13px;" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){postNoteComment('${key}');event.preventDefault();}"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="postNoteComment('${key}')">送信</button>
       </div>
-      <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Cmd/Ctrl + Enter で送信</div>
+      <div style="font-size:10px;color:var(--muted2);margin-top:3px;">Cmd/Ctrl + Enter で送信</div>
     </div>
-    <div style="margin-top:16px;text-align:right;"><button class="btn btn-ghost btn-sm" onclick="closeOv('ov-note-detail')">閉じる</button></div>`;
-  openOv('ov-note-detail');
+    <div style="margin-top:14px;text-align:right;"><button class="btn btn-ghost btn-sm" onclick="closeOv('ov-note-detail')">閉じる</button></div>`;
+}
+
+function updateNote(key) {
+  const title   = document.getElementById('ned-title')?.value.trim();
+  const body    = document.getElementById('ned-body')?.value;
+  const noteDate= document.getElementById('ned-date')?.value;
+  const members = document.getElementById('ned-members')?.value.trim();
+  if(!title){ toast('タイトルを入力してください'); return; }
+  fbUpdate(`notes/${key}`, {title, body, noteDate, members, updatedAt:Date.now()});
+  _noteEditMode = false;
+  toast('更新しました');
+  setTimeout(()=>renderNoteDetailModal(key), 300);
 }
 
 async function postNoteComment(noteKey) {
@@ -2184,37 +2305,28 @@ async function postNoteComment(noteKey) {
   if(!text) return;
   const uid = window._me?.uid||'unknown';
   await fbPush(`notePosts/${noteKey}`, {uid, text, createdAt:Date.now()});
-  // update note's updatedAt
   fbUpdate(`notes/${noteKey}`, {updatedAt:Date.now()});
   inp.value='';
-  // refresh thread in modal
-  const posts = Object.entries(window._data.notePosts[noteKey]||{})
-    .map(([k,v])=>({_key:k,...v}))
-    .sort((a,b)=>a.createdAt-b.createdAt);
-  const thread = document.getElementById(`note-posts-thread-${noteKey}`);
-  if(thread) {
-    const n = window._data.notes.find(x=>x._key===noteKey);
-    const cat = NOTE_CATS[n?.category]||NOTE_CATS['自由メモ'];
-    const renderPost = p => {
-      const pu = window._data.users[p.uid];
-      const avHTML = pu?.photo
-        ? `<img src="${pu.photo}">`
-        : `<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
-      const linked = (p.text||'').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
-      return `<div class="note-post">
-        <div class="note-post-av">${avHTML}</div>
-        <div class="note-post-body">
-          <div class="note-post-meta">
-            <span class="note-post-name">${pu?.name||'—'}</span>
-            <span class="note-post-time">${timeAgo(p.createdAt)}</span>
-          </div>
-          <div class="note-post-text">${linked}</div>
-        </div>
-      </div>`;
-    };
-    thread.innerHTML = posts.map(renderPost).join('');
-    thread.scrollTop = thread.scrollHeight;
-  }
+  setTimeout(()=>{
+    const posts = Object.entries(window._data.notePosts[noteKey]||{})
+      .map(([k,v])=>({_key:k,...v})).sort((a,b)=>a.createdAt-b.createdAt);
+    const thread = document.getElementById(`note-posts-thread-${noteKey}`);
+    if(thread){
+      const myId = window._me?.uid;
+      thread.innerHTML = posts.map(p=>{
+        const pu=window._data.users[p.uid];
+        const avHTML=pu?.photo?`<img src="${pu.photo}">`:`<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
+        const isMe=p.uid===myId;
+        return `<div class="note-post"><div class="note-post-av">${avHTML}</div><div class="note-post-body"><div class="note-post-meta"><span class="note-post-name">${pu?.name||'—'}</span><span class="note-post-time">${timeAgo(p.createdAt)}</span>${isMe?`<button onclick="deleteNotePost('${noteKey}','${p._key}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted2);font-size:10px;padding:2px 4px;border-radius:4px;">✕</button>`:''}</div><div class="note-post-text">${fmtInline(p.text||'')}</div></div></div>`;
+      }).join('');
+      thread.scrollTop = thread.scrollHeight;
+    }
+  }, 200);
+}
+
+function deleteNotePost(noteKey, postKey) {
+  fbRemove(`notePosts/${noteKey}/${postKey}`);
+  toast('コメントを削除しました');
 }
 
 function openNoteModal() {
@@ -2222,7 +2334,6 @@ function openNoteModal() {
   document.getElementById('note-body').value='';
   document.getElementById('note-members').value='';
   document.getElementById('note-category').value='議事録';
-  // Set today's date
   const today = new Date();
   document.getElementById('note-date').value =
     today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
@@ -2245,7 +2356,7 @@ function saveNote() {
   const title = document.getElementById('note-title').value.trim();
   if(!title){ toast('タイトルを入力してください'); return; }
   const category = document.getElementById('note-category').value || '自由メモ';
-  const body     = document.getElementById('note-body').value.trim();
+  const body     = document.getElementById('note-body').value;
   const noteDate = document.getElementById('note-date').value;
   const members  = document.getElementById('note-members').value.trim();
   const uid = window._me?.uid||'unknown';
