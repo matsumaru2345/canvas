@@ -6,9 +6,6 @@
 <title>CANVAS — Design Collab</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 
-<!-- ============================================================
-  🔧 FIREBASE 設定
-============================================================ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
@@ -16,7 +13,6 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getDatabase, ref, set, push, remove, onValue, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ▼▼▼ ここを書き換える ▼▼▼
 const firebaseConfig = {
   apiKey: "AIzaSyCwvxOFoETQtWrXQN5dgDFnaoChWAxa-HU",
   authDomain: "design-task-784d8.firebaseapp.com",
@@ -27,7 +23,6 @@ const firebaseConfig = {
   appId: "1:954434620061:web:46cb18c1cd7ddb73de6274",
   measurementId: "G-V8VZYYKZTT"
 };
-// ▲▲▲ ここまで ▲▲▲
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -36,25 +31,65 @@ const provider = new GoogleAuthProvider();
 
 window._fb = { db, auth, ref, set, push, remove, onValue, update, serverTimestamp };
 
-// Auth state
 onAuthStateChanged(auth, user => {
   window._me = user;
   if (user) {
-    // save profile
-    set(ref(db, `users/${user.uid}`), {
-      uid: user.uid, name: user.displayName,
-      email: user.email, photo: user.photoURL || ''
+    // Check if user is approved
+    const userRef = ref(db, `users/${user.uid}`);
+    import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js").then(m => {
+      m.get(userRef).then(snap => {
+        const userData = snap.val();
+        
+        if (!userData) {
+          // New user — save and show pending screen
+          set(userRef, {
+            uid: user.uid, name: user.displayName,
+            email: user.email, photo: user.photoURL || '',
+            status: 'pending', role: 'member', joinedAt: Date.now()
+          });
+          showPendingScreen(user);
+        } else if (userData.status === 'pending') {
+          showPendingScreen(user);
+        } else if (userData.status === 'approved' || userData.status === 'admin') {
+          // Update profile info
+          set(userRef, {
+            ...userData,
+            uid: user.uid, name: user.displayName,
+            email: user.email, photo: user.photoURL || ''
+          });
+          window._myRole = userData.role || 'member';
+          showApp(user);
+        } else {
+          showPendingScreen(user);
+        }
+      });
     });
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('user-avatar-img').src = user.photoURL || '';
-    document.getElementById('user-name-label').textContent = user.displayName;
-    initListeners();
   } else {
     document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('pending-screen').style.display = 'none';
     document.getElementById('app').style.display = 'none';
   }
 });
+
+function showPendingScreen(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('pending-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pending-name').textContent = user.displayName;
+  document.getElementById('pending-email').textContent = user.email;
+  if (user.photoURL) document.getElementById('pending-avatar').src = user.photoURL;
+}
+
+function showApp(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('pending-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-avatar-img').src = user.photoURL || '';
+  document.getElementById('user-name-label').textContent = user.displayName;
+  const topbarAv = document.getElementById('topbar-avatar');
+  if(topbarAv && user.photoURL) topbarAv.src = user.photoURL;
+  initListeners();
+}
 
 window.loginGoogle = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 window.logoutApp   = () => signOut(auth);
@@ -63,9 +98,10 @@ function initListeners() {
   const { onValue, ref } = window._fb;
   onValue(ref(db,'events'),  snap => { window._data.events  = []; snap.forEach(c => window._data.events.push({_key:c.key,...c.val()}));  renderAll(); });
   onValue(ref(db,'tasks'),   snap => { window._data.tasks   = []; snap.forEach(c => window._data.tasks.push({_key:c.key,...c.val()}));   renderAll(); });
-  onValue(ref(db,'users'),   snap => { window._data.users   = {}; snap.forEach(c => window._data.users[c.key] = c.val()); });
+  onValue(ref(db,'users'),   snap => { window._data.users   = {}; snap.forEach(c => window._data.users[c.key] = c.val()); renderAll(); });
   onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
+  onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
   document.getElementById('sync-dot').classList.add('live');
 }
 </script>
@@ -101,6 +137,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .google-btn:hover{background:var(--surface2);border-color:var(--accent);}
 .google-btn svg{width:20px;height:20px;flex-shrink:0;}
 
+/* ── Pending Screen ── */
+#pending-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
+.pending-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;text-align:center;box-shadow:var(--shadow-md);max-width:400px;width:90%;}
+.pending-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;background:var(--accent-bg);}
+.pending-icon{font-size:40px;margin-bottom:12px;}
+.pending-card h2{font-family:var(--font-s);font-size:18px;font-weight:500;margin-bottom:8px;}
+.pending-card p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:6px;}
+.pending-badge{display:inline-flex;align-items:center;gap:6px;background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.2);border-radius:20px;padding:6px 14px;font-size:12px;font-family:var(--font-s);font-weight:500;margin:12px 0 20px;}
+.invite-input-row{display:flex;gap:8px;margin-top:16px;}
+.invite-input-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:9px 11px;color:var(--text);font-family:var(--font-j);font-size:13px;outline:none;transition:border-color .12s;}
+.invite-input-row input:focus{border-color:var(--accent);}
+
 /* ── App layout ── */
 #app{display:none;min-height:100vh;}
 .sidebar{width:224px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;}
@@ -121,7 +169,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .user-area{padding:12px;border-top:1px solid var(--border);}
 .user-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;background:var(--surface2);}
 .user-av{width:30px;height:30px;border-radius:50%;object-fit:cover;background:var(--accent-bg);}
-.user-av-placeholder{width:30px;height:30px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--accent);}
 .user-info{flex:1;min-width:0;}
 .user-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .user-role{font-size:10px;color:var(--muted);}
@@ -148,6 +195,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15);}
 .btn-danger:hover{background:#fee2e2;}
 .btn-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(22,163,74,.15);}
+.btn-green:hover{background:#dcfce7;}
+.btn-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.15);}
 
 /* ── Stats ── */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
@@ -196,10 +245,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .col-count{font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:1px 6px;border-radius:10px;}
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:7px;cursor:pointer;transition:all .12s;box-shadow:var(--shadow);position:relative;}
 .task-card:hover{box-shadow:var(--shadow-md);}
+.task-card:hover .task-card-actions{opacity:1;}
 .task-card.mine{border-left:3px solid var(--accent);}
 .task-card.others{opacity:.72;}
+/* Task card action buttons (duplicate) */
+.task-card-actions{position:absolute;top:7px;right:7px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
+.task-action-btn{width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .12s;}
+.task-action-btn:hover{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.25);}
 .pdot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
-.tk-title{font-size:13px;margin-bottom:5px;line-height:1.4;}
+.tk-title{font-size:13px;margin-bottom:5px;line-height:1.4;padding-right:50px;}
 .tk-foot{display:flex;align-items:center;justify-content:space-between;margin-top:7px;}
 .tk-etag{font-size:10px;color:var(--muted);background:var(--surface2);padding:2px 6px;border-radius:4px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tk-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;overflow:hidden;}
@@ -267,6 +321,10 @@ textarea.fi{resize:vertical;min-height:70px;}
 .info-lbl{font-size:10px;color:var(--muted);margin-bottom:2px;font-family:var(--font-s);}
 .info-val{font-size:13px;}
 
+/* ── Status buttons — fixed equal width ── */
+.status-btn-group{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.status-btn-group .btn{text-align:center;white-space:nowrap;padding:6px 4px;font-size:11px;}
+
 /* ── Comments ── */
 .comment-thread{max-height:320px;overflow-y:auto;margin-bottom:12px;}
 .comment-item{display:flex;gap:9px;padding:10px 0;border-bottom:1px solid var(--border);}
@@ -286,6 +344,22 @@ textarea.fi{resize:vertical;min-height:70px;}
 .comment-input-row{display:flex;gap:8px;align-items:flex-end;}
 .comment-input-row textarea{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 11px;font-family:var(--font-j);font-size:13px;color:var(--text);outline:none;resize:none;min-height:52px;transition:border-color .12s;}
 .comment-input-row textarea:focus{border-color:var(--accent);}
+
+/* ── User Management ── */
+.user-mgmt-table{width:100%;border-collapse:collapse;}
+.user-mgmt-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--font-s);font-weight:500;padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.user-mgmt-table td{padding:10px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.user-mgmt-table tr:last-child td{border-bottom:none;}
+.user-status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-family:var(--font-s);font-weight:500;}
+.pill-pending{background:var(--amber-bg);color:var(--amber);}
+.pill-approved{background:var(--green-bg);color:var(--green);}
+.pill-admin{background:var(--accent-bg);color:var(--accent);}
+.pill-blocked{background:var(--red-bg);color:var(--red);}
+
+/* Invite code display */
+.invite-code-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.invite-code{font-family:var(--font-s);font-size:18px;font-weight:500;letter-spacing:.12em;color:var(--accent);}
+.invite-meta{font-size:11px;color:var(--muted);}
 
 /* ── Notifications ── */
 .notif-panel{position:fixed;top:0;right:-340px;width:320px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:300;transition:right .25s;display:flex;flex-direction:column;box-shadow:var(--shadow-md);}
@@ -319,6 +393,9 @@ textarea.fi{resize:vertical;min-height:70px;}
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
+/* ── Bottom nav (mobile) ── */
+.bottom-nav{display:none;}
+
 @media(max-width:960px){
   .sidebar{width:54px;}
   .sidebar .nav-item span:not(.nav-icon){display:none;}
@@ -326,6 +403,141 @@ textarea.fi{resize:vertical;min-height:70px;}
   .main{margin-left:54px;}
   .task-board{grid-template-columns:repeat(2,1fr);}
   .stats-grid{grid-template-columns:repeat(2,1fr);}
+}
+
+@media(max-width:600px){
+  /* Hide desktop sidebar entirely */
+  .sidebar{display:none;}
+  .main{margin-left:0;padding-bottom:70px;}
+
+  /* ── Bottom Navigation ── */
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
+    background:var(--surface);border-top:1px solid var(--border);
+    padding:6px 0 max(6px, env(safe-area-inset-bottom));
+    box-shadow:0 -2px 12px rgba(0,0,0,.06);
+  }
+  .bn-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;padding:4px 2px;border:none;background:none;cursor:pointer;
+    color:var(--muted);font-size:9px;font-family:var(--font-j);
+    transition:color .12s;position:relative;
+  }
+  .bn-item.active{color:var(--accent);}
+  .bn-item svg{width:20px;height:20px;}
+  .bn-badge{
+    position:absolute;top:2px;right:calc(50% - 16px);
+    background:var(--red);color:#fff;border-radius:10px;
+    font-size:9px;padding:1px 4px;font-family:var(--font-s);
+    display:none;
+  }
+  .bn-badge.show{display:block;}
+
+  /* ── Topbar mobile ── */
+  .topbar{padding:10px 16px;}
+  .topbar-title{font-size:15px;}
+  .topbar-actions .btn{padding:6px 10px;font-size:12px;}
+  .topbar-actions select.fi{font-size:11px;padding:5px 8px;}
+
+  /* ── Pages ── */
+  .page{padding:14px 14px 10px;}
+
+  /* ── Stats ── */
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
+  .stat-card{padding:12px;}
+  .stat-value{font-size:22px;}
+
+  /* ── Events grid ── */
+  .events-grid{grid-template-columns:1fr;gap:10px;}
+
+  /* ── Task board — horizontal scroll ── */
+  .task-board{
+    display:flex;overflow-x:auto;gap:10px;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:8px;
+  }
+  .task-board::-webkit-scrollbar{height:3px;}
+  .task-board::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+  .task-col{
+    min-width:72vw;max-width:72vw;
+    scroll-snap-align:start;flex-shrink:0;
+  }
+
+  /* ── Modals — full screen on mobile ── */
+  .overlay{padding:0;align-items:flex-end;}
+  .modal{
+    border-radius:20px 20px 0 0;max-height:92vh;
+    padding:20px 18px 24px;
+    width:100%;max-width:100%;
+  }
+  .modal-title{font-size:14px;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+
+  /* ── Status btn group ── */
+  .status-btn-group{grid-template-columns:repeat(2,1fr);}
+
+  /* ── Filter bar ── */
+  .filter-bar{gap:5px;}
+  .chip{padding:4px 10px;font-size:11px;}
+
+  /* ── View toggle ── */
+  .view-toggle{width:100%;}
+  .view-btn{flex:1;}
+
+  /* ── Section headers ── */
+  .sec-head{margin-bottom:10px;}
+
+  /* ── Timeline ── */
+  .tl-item{padding:10px 0;}
+  .tl-day{font-size:16px;}
+
+  /* ── User mgmt table — card layout ── */
+  .user-mgmt-table thead{display:none;}
+  .user-mgmt-table tr{display:block;padding:10px;border-bottom:1px solid var(--border);}
+  .user-mgmt-table td{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border:none;font-size:12px;}
+  .user-mgmt-table td:first-child{margin-bottom:4px;}
+
+  /* ── Info grid ── */
+  .info-grid{grid-template-columns:1fr 1fr;}
+
+  /* ── Comment input ── */
+  .comment-input-row textarea{font-size:16px;} /* prevent iOS zoom */
+
+  /* ── Inputs ── */
+  .fi{font-size:16px;} /* prevent iOS zoom on focus */
+
+  /* ── Toast ── */
+  #toast{font-size:12px;padding:8px 14px;bottom:80px;}
+
+  /* ── Notif panel ── */
+  .notif-panel{width:100%;right:-100%;}
+  .notif-panel.open{right:0;}
+
+  /* ── Invite code box ── */
+  .invite-code-box{flex-direction:column;align-items:flex-start;gap:8px;}
+
+  /* ── Mobile avatar menu btn visible ── */
+  #mobile-menu-btn{display:flex !important;}
+
+  /* ── Mobile dropdown menu ── */
+  .mobile-menu{
+    position:fixed;bottom:76px;right:12px;z-index:500;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;box-shadow:var(--shadow-md);
+    padding:8px;min-width:160px;
+    display:none;
+  }
+  .mobile-menu.open{display:block;}
+  .mm-item{
+    display:flex;align-items:center;gap:9px;padding:9px 12px;
+    border-radius:7px;font-size:13px;cursor:pointer;
+    border:none;background:none;width:100%;text-align:left;
+    font-family:var(--font-j);color:var(--text);transition:background .12s;
+  }
+  .mm-item:hover{background:var(--surface2);}
+  .mm-item.danger{color:var(--red);}
+  .mm-item.danger:hover{background:var(--red-bg);}
 }
 </style>
 </head>
@@ -343,6 +555,29 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
       Googleでログイン
     </button>
+  </div>
+</div>
+
+<!-- ── Pending Screen ── -->
+<div id="pending-screen">
+  <div class="pending-card">
+    <img id="pending-avatar" class="pending-avatar" src="" alt="" onerror="this.style.display='none'">
+    <div class="pending-icon">⏳</div>
+    <h2>承認待ちです</h2>
+    <p id="pending-name" style="font-weight:500;font-size:14px;"></p>
+    <p id="pending-email" style="font-size:12px;color:var(--muted);"></p>
+    <div class="pending-badge">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+      管理者の承認を待っています
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">招待コードをお持ちの場合は入力してください</p>
+    <div class="invite-input-row">
+      <input id="invite-code-input" class="fi" placeholder="招待コード（6桁）" maxlength="6" style="text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-s);font-size:15px;text-align:center;">
+      <button class="btn btn-primary" onclick="redeemInvite()">使用</button>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-ghost" style="width:100%;font-size:12px;" onclick="logoutApp()">別のアカウントでログイン</button>
+    </div>
   </div>
 </div>
 
@@ -375,6 +610,11 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
         <span>スケジュール</span>
       </button>
+      <div class="nav-sec" style="margin-top:8px;">管理</div>
+      <button class="nav-item" id="nav-usermgmt" onclick="showPage('usermgmt')" style="display:none;">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
+        <span>ユーザー管理</span>
+      </button>
       <div class="nav-sec" style="margin-top:8px;">コミュニティ</div>
       <button class="nav-item" onclick="toggleNotif()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5zM6.5 13a1.5 1.5 0 003 0"/></svg>
@@ -387,7 +627,7 @@ textarea.fi{resize:vertical;min-height:70px;}
         <img id="user-avatar-img" class="user-av" src="" alt="" onerror="this.style.display='none'">
         <div class="user-info">
           <div class="user-name" id="user-name-label">—</div>
-          <div class="user-role">デザイナー</div>
+          <div class="user-role" id="user-role-label">デザイナー</div>
         </div>
         <button class="logout-btn" onclick="logoutApp()" title="ログアウト">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
@@ -405,6 +645,9 @@ textarea.fi{resize:vertical;min-height:70px;}
         <span class="topbar-title">ダッシュボード</span>
         <div class="topbar-actions">
           <button class="btn btn-primary" onclick="openEvModal()">＋ イベント追加</button>
+          <button class="btn btn-ghost btn-sm" id="mobile-menu-btn" onclick="toggleMobileMenu()" style="display:none;padding:5px 8px;">
+            <img id="topbar-avatar" src="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none'">
+          </button>
         </div>
       </div>
       <div style="padding:26px">
@@ -467,6 +710,47 @@ textarea.fi{resize:vertical;min-height:70px;}
       <div style="padding:26px" id="schedule"></div>
     </div>
 
+    <!-- User Management -->
+    <div id="page-usermgmt" class="page">
+      <div class="topbar">
+        <span class="topbar-title">ユーザー管理</span>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="generateInviteCode()">＋ 招待コード発行</button>
+        </div>
+      </div>
+      <div style="padding:26px">
+        <!-- Invite Codes section -->
+        <div class="sec-head" style="margin-bottom:12px;"><h2>招待コード</h2></div>
+        <div id="invite-codes-list" style="margin-bottom:24px;"></div>
+
+        <!-- Pending users -->
+        <div style="background:var(--amber-bg);border:1px solid rgba(217,119,6,.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:12px;font-weight:500;color:var(--amber);margin-bottom:2px;">承認待ちユーザー</div>
+            <div style="font-size:12px;color:var(--muted);" id="pending-count-label">0人が承認待ちです</div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="var(--amber)" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+        </div>
+
+        <!-- All users table -->
+        <div class="sec-head"><h2>全メンバー</h2></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <table class="user-mgmt-table" id="user-mgmt-table">
+            <thead>
+              <tr>
+                <th>ユーザー</th>
+                <th>ステータス</th>
+                <th>役割</th>
+                <th>参加日</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="user-mgmt-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- Notification panel -->
@@ -476,6 +760,43 @@ textarea.fi{resize:vertical;min-height:70px;}
       <button class="btn btn-ghost btn-sm" onclick="toggleNotif()">✕</button>
     </div>
     <div class="notif-list" id="notif-list"></div>
+  </div>
+
+  <!-- ── Bottom Navigation (mobile only) ── -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bn-item active" id="bn-dash" onclick="showPage('dash')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+      ホーム
+    </button>
+    <button class="bn-item" id="bn-events" onclick="showPage('events')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
+      イベント
+    </button>
+    <button class="bn-item" id="bn-tasks" onclick="showPage('tasks')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
+      タスク
+    </button>
+    <button class="bn-item" id="bn-schedule" onclick="showPage('schedule')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
+      予定
+    </button>
+    <button class="bn-item" id="bn-notif" onclick="toggleNotif()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5zM6.5 13a1.5 1.5 0 003 0"/></svg>
+      <span class="bn-badge" id="bn-notif-badge">0</span>
+      通知
+    </button>
+  </nav>
+
+  <!-- Mobile dropdown menu -->
+  <div class="mobile-menu" id="mobile-menu">
+    <button class="mm-item" onclick="showPage('usermgmt');toggleMobileMenu()" id="mm-usermgmt" style="display:none;">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-3 2.5-5 5-5s5 2 5 5"/><path d="M12 7l2 2 2-2"/><path d="M14 9V5"/></svg>
+      ユーザー管理
+    </button>
+    <button class="mm-item danger" onclick="logoutApp()">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h8M11 5l3 3-3 3M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3"/></svg>
+      ログアウト
+    </button>
   </div>
 </div>
 
@@ -491,7 +812,6 @@ textarea.fi{resize:vertical;min-height:70px;}
 
     <!-- AI tab -->
     <div id="tab-ai">
-      <!-- STEP 1 -->
       <div style="background:var(--accent-bg);border:1.5px dashed rgba(29,78,216,.3);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div class="ai-badge" style="margin-bottom:8px;">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1l1.8 4.2L14 8l-4.2 1.8L8 14l-1.8-4.2L2 8l4.2-1.8z"/></svg>
@@ -501,7 +821,6 @@ textarea.fi{resize:vertical;min-height:70px;}
         <button class="btn btn-accent" style="width:100%;margin-top:8px;" onclick="generatePrompt()">✦ プロンプトを生成する</button>
       </div>
 
-      <!-- STEP 2 -->
       <div id="ai-step2" style="display:none;">
         <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -514,7 +833,6 @@ textarea.fi{resize:vertical;min-height:70px;}
           <textarea id="ai-prompt-output" class="fi" readonly style="min-height:120px;font-size:11px;background:#fff;line-height:1.5;"></textarea>
         </div>
 
-        <!-- STEP 3 -->
         <div style="background:var(--green-bg);border:1.5px dashed rgba(22,163,74,.3);border-radius:10px;padding:14px;">
           <div class="ai-badge" style="color:var(--green);margin-bottom:8px;">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/></svg>
@@ -602,8 +920,9 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{} };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{} };
 window._me   = null;
+window._myRole = 'member';
 
 const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const STATUS_LIST = ['未着手','進行中','レビュー中','完了'];
@@ -638,13 +957,11 @@ function toast(msg,type='normal'){
 function empty(msg){ return `<div class="empty"><div class="empty-icon">◻</div><p style="font-size:13px;">${msg}</p></div>`; }
 function timeAgo(ts){ if(!ts) return ''; const d=(Date.now()-ts)/1000; if(d<60) return 'たった今'; if(d<3600) return Math.floor(d/60)+'分前'; if(d<86400) return Math.floor(d/3600)+'時間前'; return Math.floor(d/86400)+'日前'; }
 
-// FB
 function fbSet(p,v){ if(!window._fb) return; return window._fb.set(window._fb.ref(window._fb.db,p),v); }
 function fbPush(p,v){ if(!window._fb) return; return window._fb.push(window._fb.ref(window._fb.db,p),v); }
 function fbRemove(p){ if(!window._fb) return; return window._fb.remove(window._fb.ref(window._fb.db,p)); }
 function fbUpdate(p,v){ if(!window._fb) return; return window._fb.update(window._fb.ref(window._fb.db,p),v); }
 
-// ─── user avatar html ───
 function userAv(uid,size=24){
   const u = window._data.users[uid];
   if(u?.photo) return `<div class="av" style="width:${size}px;height:${size}px;border:2px solid var(--surface);"><img src="${u.photo}" onerror="this.parentElement.innerHTML='${initials(u?.name||'?')}'"></div>`;
@@ -685,10 +1002,20 @@ function launchConfetti(){
 
 // ─── RENDER ───
 function renderAll(){
+  // Show/hide admin nav
+  const isAdmin = window._myRole === 'admin';
+  const navUm = document.getElementById('nav-usermgmt');
+  if(navUm) navUm.style.display = isAdmin ? '' : 'none';
+  const roleLabel = document.getElementById('user-role-label');
+  if(roleLabel) roleLabel.textContent = isAdmin ? '管理者' : 'デザイナー';
+  const mmUm = document.getElementById('mm-usermgmt');
+  if(mmUm) mmUm.style.display = isAdmin ? '' : 'none';
+
   if(_activePage==='dash')     renderDash();
   if(_activePage==='events')   renderEvents();
   if(_activePage==='tasks')    renderTasks();
   if(_activePage==='schedule') renderSchedule();
+  if(_activePage==='usermgmt') renderUserMgmt();
   renderNotifs();
 }
 
@@ -813,6 +1140,11 @@ function tkCard(t){
     :`<div class="tk-av" style="background:${avBg(avColor(u?.name||t.assigneeUid||''))};color:${avColor(u?.name||t.assigneeUid||'')};">${initials(u?.name||t.assigneeUid||'?')}</div>`;
   return `<div class="task-card ${isMine?'mine':'others'}" draggable="true"
     ondragstart="_dragKey='${t._key}'" onclick="openTkDetail('${t._key}')">
+    <div class="task-card-actions" onclick="event.stopPropagation()">
+      <button class="task-action-btn" title="複製" onclick="duplicateTask('${t._key}')">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M2 11V3a2 2 0 012-2h8"/></svg>
+      </button>
+    </div>
     <div class="tk-title"><span class="pdot" style="background:${PRI[t.priority]?.color||'#888'}"></span>${t.name}</div>
     ${t.note?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${t.note}</div>`:''}
     <div class="tk-foot">
@@ -826,6 +1158,24 @@ function tkCard(t){
       </div>
     </div>
   </div>`;
+}
+
+// ─── DUPLICATE TASK ───
+function duplicateTask(key){
+  const t=window._data.tasks.find(x=>x._key===key);
+  if(!t) return;
+  const copy={
+    name: t.name + ' （コピー）',
+    eventKey: t.eventKey,
+    assigneeUid: t.assigneeUid,
+    due: t.due||'',
+    priority: t.priority||'mid',
+    status: '未着手',
+    note: t.note||'',
+    createdBy: window._me?.uid||''
+  };
+  fbPush('tasks', copy);
+  toast('タスクを複製しました');
 }
 
 function dropTask(e,status){
@@ -862,6 +1212,112 @@ function renderSchedule(){
   document.getElementById('schedule').innerHTML=html||empty('スケジュールがありません');
 }
 
+// ─── USER MANAGEMENT ───
+function renderUserMgmt(){
+  if(window._myRole !== 'admin') return;
+
+  const users = Object.values(window._data.users);
+  const pending = users.filter(u=>u.status==='pending');
+  const pendingLabel = document.getElementById('pending-count-label');
+  if(pendingLabel) pendingLabel.textContent = `${pending.length}人が承認待ちです`;
+
+  // Invite codes
+  const invites = window._data.invites;
+  const inviteList = document.getElementById('invite-codes-list');
+  if(inviteList){
+    const codes = Object.entries(invites).filter(([,v])=>!v.used);
+    inviteList.innerHTML = codes.length
+      ? codes.map(([k,v])=>`
+        <div class="invite-code-box">
+          <div>
+            <div class="invite-code">${v.code}</div>
+            <div class="invite-meta">発行日: ${new Date(v.createdAt).toLocaleDateString('ja-JP')} · 未使用</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')">削除</button>
+        </div>`).join('')
+      : `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;color:var(--muted);font-size:13px;">有効な招待コードがありません。「招待コード発行」ボタンで作成してください。</div>`;
+  }
+
+  // Users table
+  const tbody = document.getElementById('user-mgmt-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = users.map(u=>{
+    const statusMap = {
+      pending: '<span class="user-status-pill pill-pending">⏳ 承認待ち</span>',
+      approved: '<span class="user-status-pill pill-approved">✓ 承認済み</span>',
+      admin: '<span class="user-status-pill pill-admin">★ 管理者</span>',
+      blocked: '<span class="user-status-pill pill-blocked">✕ ブロック</span>'
+    };
+    const isMe = u.uid === window._me?.uid;
+    const roleMap = {member:'メンバー', admin:'管理者'};
+    const actions = isMe
+      ? `<span style="font-size:11px;color:var(--muted);">（自分）</span>`
+      : `<div style="display:flex;gap:5px;flex-wrap:wrap;">
+          ${u.status==='pending'?`<button class="btn btn-green btn-sm" onclick="approveUser('${u.uid}')">承認</button>`:''}
+          ${u.status==='approved'?`<button class="btn btn-accent btn-sm" onclick="promoteUser('${u.uid}')">管理者に</button>`:''}
+          ${u.status==='admin'?`<button class="btn btn-ghost btn-sm" onclick="demoteUser('${u.uid}')">権限解除</button>`:''}
+          ${u.status!=='blocked'?`<button class="btn btn-danger btn-sm" onclick="blockUser('${u.uid}')">ブロック</button>`:`<button class="btn btn-ghost btn-sm" onclick="approveUser('${u.uid}')">解除</button>`}
+        </div>`;
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:9px;">
+          ${u.photo?`<img src="${u.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`:`<div style="width:30px;height:30px;border-radius:50%;background:${avBg(avColor(u.name||''))};color:${avColor(u.name||'')};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;">${initials(u.name||'?')}</div>`}
+          <div>
+            <div style="font-size:13px;font-weight:500;">${u.name||'—'}</div>
+            <div style="font-size:11px;color:var(--muted);">${u.email||''}</div>
+          </div>
+        </div>
+      </td>
+      <td>${statusMap[u.status]||statusMap['pending']}</td>
+      <td style="font-size:12px;">${roleMap[u.role]||'メンバー'}</td>
+      <td style="font-size:11px;color:var(--muted);">${u.joinedAt?new Date(u.joinedAt).toLocaleDateString('ja-JP'):'-'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function generateInviteCode(){
+  const code = Math.random().toString(36).substring(2,8).toUpperCase();
+  fbPush('invites',{code,createdAt:Date.now(),createdBy:window._me?.uid||'',used:false});
+  toast(`招待コード「${code}」を発行しました`);
+}
+
+function deleteInvite(key){ fbRemove(`invites/${key}`); toast('招待コードを削除しました'); }
+
+function approveUser(uid){
+  fbUpdate(`users/${uid}`,{status:'approved',role:'member'});
+  toast('ユーザーを承認しました');
+  pushNotif('ユーザー承認','新しいメンバーが参加しました');
+}
+function promoteUser(uid){ fbUpdate(`users/${uid}`,{role:'admin',status:'admin'}); toast('管理者権限を付与しました'); }
+function demoteUser(uid){ fbUpdate(`users/${uid}`,{role:'member',status:'approved'}); toast('権限を解除しました'); }
+function blockUser(uid){ fbUpdate(`users/${uid}`,{status:'blocked'}); toast('ユーザーをブロックしました'); }
+
+// Pending screen invite redemption
+window.redeemInvite = function(){
+  const code = document.getElementById('invite-code-input').value.trim().toUpperCase();
+  if(code.length<4){ toast('コードを入力してください'); return; }
+  const invites = window._data.invites;
+  // Listen for invites even on pending screen
+  if(window._fb){
+    const {onValue,ref,db} = window._fb;
+    onValue(ref(db,'invites'), snap => {
+      const codes = {};
+      snap.forEach(c=>codes[c.key]=c.val());
+      const match = Object.entries(codes).find(([,v])=>v.code===code&&!v.used);
+      if(match){
+        const [key] = match;
+        fbUpdate(`invites/${key}`,{used:true,usedBy:window._me?.uid,usedAt:Date.now()});
+        fbUpdate(`users/${window._me?.uid}`,{status:'approved',role:'member'});
+        toast('招待コードが有効です！参加しました🎉');
+        setTimeout(()=>location.reload(),1500);
+      } else {
+        toast('無効な招待コードです');
+      }
+    },{onlyOnce:true});
+  }
+};
+
 // ─── NOTIFICATIONS ───
 function pushNotif(title,body){
   _notifs.unshift({title,body,time:Date.now(),read:false});
@@ -871,6 +1327,9 @@ function renderNotifs(){
   const count=_notifs.filter(n=>!n.read).length;
   const badge=document.getElementById('notif-count');
   badge.textContent=count; badge.style.display=count?'':'none';
+  // sync bottom nav badge
+  const bnBadge=document.getElementById('bn-notif-badge');
+  if(bnBadge){ bnBadge.textContent=count; bnBadge.classList.toggle('show',count>0); }
   document.getElementById('notif-list').innerHTML=_notifs.length
     ? _notifs.map((n,i)=>`<div class="notif-item ${n.read?'':'unread'}" onclick="markRead(${i})">
         <p><strong>${n.title}</strong><br>${n.body}</p>
@@ -886,10 +1345,6 @@ function openEvModal(key){
   _editEvKey=key||null;
   const e=key?window._data.events.find(x=>x._key===key):null;
   document.getElementById('ev-modal-ttl').textContent=key?'イベントを編集':'新規イベント';
-  ['ev-name','ev-desc','ev-loc','ev-url','ev-organizer','ev-fee','ev-prize','ev-category','ev-eligibility','ev-criteria','ev-format','ev-notes','ev-members'].forEach(id=>{
-    const field=id.replace('ev-','').replace('loc','location').replace('organizer','organizer').replace('members','members');
-    document.getElementById(id).value=e?.(e[field]||(Array.isArray(e.members)?e.members.join(', '):''))||'';
-  });
   if(e) {
     document.getElementById('ev-name').value=e.name||'';
     document.getElementById('ev-desc').value=e.desc||'';
@@ -909,6 +1364,7 @@ function openEvModal(key){
     document.getElementById('ev-type').value=e.type||'コンペ';
     document.getElementById('ev-status').value=e.evStatus||'検討中';
   } else {
+    ['ev-name','ev-desc','ev-loc','ev-url','ev-organizer','ev-fee','ev-prize','ev-category','ev-eligibility','ev-criteria','ev-format','ev-notes','ev-members'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('ev-start').value='';
     document.getElementById('ev-end').value='';
     document.getElementById('ai-source-input').value='';
@@ -951,11 +1407,11 @@ function openTkModal(){
   ['tk-name','tk-note','tk-due'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tk-pri').value='mid';
   document.getElementById('tk-ev').innerHTML=window._data.events.map(e=>`<option value="${e._key}">${e.name}</option>`).join('')||'<option>イベントなし</option>';
-  // assignee checkboxes
   const myId=window._me?.uid;
-  const ev=window._data.events[0];
-  const members=ev?.members||[];
-  const allUids=[...new Set([...Object.keys(window._data.users),...members])];
+  const allUids=[...new Set([...Object.keys(window._data.users)])].filter(uid=>{
+    const u=window._data.users[uid];
+    return u?.status==='approved'||u?.status==='admin';
+  });
   document.getElementById('tk-assignees').innerHTML=allUids.map(uid=>{
     const u=window._data.users[uid]; const name=u?.name||uid;
     const checked=uid===myId?'checked':'';
@@ -1093,15 +1549,21 @@ function openTkDetail(key){
   document.getElementById('detail-body').innerHTML=`
     <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
       <h3 style="font-size:15px;font-weight:500;">${t.name}</h3>
-      <button class="btn btn-danger btn-sm" onclick="deleteTask('${key}')">削除</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" title="複製" onclick="duplicateTask('${key}');closeOv('ov-detail')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M2 11V3a2 2 0 012-2h8"/></svg>
+          複製
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTask('${key}')">削除</button>
+      </div>
     </div>
     <div class="info-grid" style="margin-bottom:14px;">
       ${[['イベント',ev?.name||'—'],['担当',u?.name||t.assigneeUid],['期限',t.due||'未設定'],['優先度',PRI[t.priority]?.label||'—']].map(([l,v])=>`<div class="info-cell"><div class="info-lbl">${l}</div><div class="info-val">${v}</div></div>`).join('')}
     </div>
     <div style="margin-bottom:14px;">
       <div class="fl">ステータス変更</div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;">
-        ${STATUS_LIST.map(s=>`<button class="btn ${t.status===s?'btn-primary':'btn-ghost'} btn-sm" onclick="changeStatus('${key}','${s}')">${s}</button>`).join('')}
+      <div class="status-btn-group">
+        ${STATUS_LIST.map(s=>`<button class="btn ${t.status===s?'btn-primary':'btn-ghost'}" onclick="changeStatus('${key}','${s}')">${s}</button>`).join('')}
       </div>
     </div>
     ${t.note?`<div style="background:var(--surface2);border-radius:8px;padding:11px;font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px;">${t.note}</div>`:''}
@@ -1160,7 +1622,6 @@ async function postComment(taskKey){
   const uid=window._me?.uid||'unknown';
   await fbPush('comments',{taskKey,uid,text,ts:Date.now()});
   inp.value='';
-  // refresh thread
   const comments=window._data.comments.filter(c=>c.taskKey===taskKey).sort((a,b)=>a.ts-b.ts);
   const thread=document.getElementById(`comm-thread-${taskKey}`);
   if(thread) thread.innerHTML=comments.map(c=>commentHTML(c)).join('');
@@ -1280,12 +1741,37 @@ function openOv(id){ document.getElementById(id).classList.add('open'); }
 function closeOv(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
 
+function toggleMobileMenu(){
+  const menu = document.getElementById('mobile-menu');
+  menu.classList.toggle('open');
+  // show/hide admin item
+  const mmUm = document.getElementById('mm-usermgmt');
+  if(mmUm) mmUm.style.display = window._myRole==='admin'?'':'none';
+  // close when clicking outside
+  if(menu.classList.contains('open')){
+    setTimeout(()=>{
+      document.addEventListener('click', function handler(e){
+        if(!menu.contains(e.target)&&!document.getElementById('mobile-menu-btn').contains(e.target)){
+          menu.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 10);
+  }
+}
+
 function showPage(id){
+  if(id==='usermgmt'&&window._myRole!=='admin'){ toast('管理者のみアクセス可能です'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={dash:0,events:1,tasks:2,schedule:3}[id];
-  document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  const idx={dash:0,events:1,tasks:2,schedule:3,usermgmt:4}[id];
+  const navItems=document.querySelectorAll('.nav-item');
+  if(navItems[idx]) navItems[idx].classList.add('active');
+  // sync bottom nav
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule'};
+  if(bnMap[id]) document.getElementById(bnMap[id])?.classList.add('active');
   _activePage=id; renderAll();
 }
 </script>
