@@ -1233,27 +1233,29 @@ function renderUserMgmt(){
     const appUrl = window.location.href.split('?')[0];
     inviteList.innerHTML = codes.length
       ? codes.map(([k,v])=>{
-          const shareText = `CANVASに招待します！\nアプリを開いてGoogleログイン後、招待コードを入力してください。\n\n招待コード：${v.code}\n\nアプリURL：${appUrl}`;
-          const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
-          const smsUrl = `sms:?body=${encodeURIComponent(shareText)}`;
           return `
         <div class="invite-code-box">
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
               <div class="invite-code">${v.code}</div>
-              <button class="btn btn-ghost btn-sm" onclick="copyInviteText('${v.code}','${appUrl}')" style="font-size:11px;">📋 コピー</button>
             </div>
             <div class="invite-meta">発行日: ${new Date(v.createdAt).toLocaleDateString('ja-JP')} · 未使用</div>
-            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-              <a href="${lineUrl}" target="_blank" class="btn btn-sm" style="background:#06C755;color:#fff;border:none;display:flex;align-items:center;gap:5px;text-decoration:none;font-size:12px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                LINEで送る
-              </a>
-              <a href="${smsUrl}" class="btn btn-ghost btn-sm" style="font-size:12px;display:flex;align-items:center;gap:5px;text-decoration:none;">
-                💬 SMSで送る
-              </a>
-              <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')" style="margin-left:auto;">削除</button>
+
+            <!-- 招待文プレビュー -->
+            <div style="background:#fff;border:1px solid var(--border2);border-radius:8px;padding:11px 13px;margin-top:10px;font-size:12px;line-height:1.8;color:var(--text);white-space:pre-wrap;" id="invite-text-${k}">CANVASに招待します！
+アプリを開いてGoogleログイン後、招待コードを入力してください。
+
+招待コード：${v.code}
+
+アプリURL：${appUrl}</div>
+
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="copyInviteBlock('${k}')" style="flex:1;font-size:12px;">
+                📋 上の文をコピー → LINEに貼り付けて送る
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')">削除</button>
             </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">コピー後、LINEを開いて相手のトークに貼り付けてください</div>
           </div>
         </div>`;
         }).join('')
@@ -1304,9 +1306,33 @@ function generateInviteCode(){
   toast(`招待コード「${code}」を発行しました！下のボタンで送れます`);
 }
 
-function copyInviteText(code, appUrl){
-  const text = `CANVASに招待します！\nアプリを開いてGoogleログイン後、招待コードを入力してください。\n\n招待コード：${code}\n\nアプリURL：${appUrl}`;
-  navigator.clipboard.writeText(text).then(()=>toast('招待テキストをコピーしました！LINEやメールに貼り付けてください'));
+function copyInviteBlock(key){
+  const el = document.getElementById('invite-text-' + key);
+  if(!el){ toast('エラーが発生しました'); return; }
+  const text = el.innerText;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text)
+      .then(()=>toast('✅ コピーしました！LINEに貼り付けて送ってください'))
+      .catch(()=>fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    toast('✅ コピーしました！LINEに貼り付けて送ってください');
+  } catch(e) {
+    toast('コピーできませんでした。手動で選択してコピーしてください');
+  }
+  document.body.removeChild(ta);
 }
 
 function deleteInvite(key){ fbRemove(`invites/${key}`); toast('招待コードを削除しました'); }
