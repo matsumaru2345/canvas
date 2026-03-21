@@ -224,8 +224,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 .user-info{flex:1;min-width:0;}
 .user-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent);}
 .user-role{font-size:10px;color:var(--muted);}
-.logout-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:5px;border-radius:6px;transition:all .12s;}
-.logout-btn:hover{color:var(--red);background:var(--red-bg);}
+.logout-btn{background:none !important;border:none !important;box-shadow:none !important;cursor:pointer;color:var(--muted);padding:5px;border-radius:6px;transition:all .12s;font-weight:400;}
+.logout-btn:hover{color:var(--red) !important;background:var(--red-bg) !important;transform:none !important;}
 
 /* ── Main ── */
 .main{margin-left:232px;flex:1;min-height:100vh;}
@@ -410,8 +410,8 @@ textarea.fi{resize:vertical;min-height:70px;}
 .pill-blocked{background:var(--red-bg);color:var(--red);}
 
 /* Invite code display */
-.invite-code-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.invite-code{font-family:var(--font-s);font-size:18px;font-weight:500;letter-spacing:.12em;color:var(--accent);}
+.invite-code-box{background:var(--accent-bg);border:2px solid var(--accent-light);border-radius:var(--radius);padding:16px;margin-bottom:12px;display:block;}
+.invite-code{font-family:var(--font-s);font-size:28px;font-weight:700;letter-spacing:.18em;color:var(--accent);display:block;margin-bottom:4px;}
 .invite-meta{font-size:11px;color:var(--muted);}
 
 /* ── Notifications ── */
@@ -445,6 +445,21 @@ textarea.fi{resize:vertical;min-height:70px;}
 
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
+
+/* ── Mobile Menu Items (global) ── */
+.mm-item{
+  display:flex !important;align-items:center;gap:10px;padding:11px 14px;
+  border-radius:var(--radius-sm);font-size:14px;cursor:pointer;
+  border:none !important;background:none !important;
+  box-shadow:none !important;
+  width:100%;text-align:left;
+  font-family:var(--font-j);color:var(--text);
+  font-weight:600;transition:background .12s;
+}
+.mm-item:hover{background:var(--accent-bg) !important;color:var(--accent) !important;}
+.mm-item:active{transform:scale(.97);}
+.mm-item.danger{color:var(--red) !important;}
+.mm-item.danger:hover{background:var(--red-bg) !important;color:var(--red) !important;}
 
 /* ── Weekly Stats ── */
 .stats-bar-wrap{margin-bottom:16px;}
@@ -741,8 +756,7 @@ textarea.fi{resize:vertical;min-height:70px;}
   .notif-panel.open{right:0;}
 
   /* ── Invite code box ── */
-  .invite-code-box{flex-direction:column;align-items:flex-start;gap:8px;}
-  .invite-code{font-size:24px;letter-spacing:.18em;}
+  .invite-code{font-size:26px;}
 
   /* ── Weekly goals grid ── */
   #weekly-goals-grid{grid-template-columns:1fr !important;}
@@ -758,26 +772,18 @@ textarea.fi{resize:vertical;min-height:70px;}
   .pending-card{padding:28px 20px;}
 
   /* ── Mobile avatar menu btn visible ── */
-  #mobile-menu-btn{display:flex !important;}
+  #mobile-menu-btn{display:flex !important;background:none !important;border:2px solid var(--border2) !important;box-shadow:none !important;padding:4px !important;border-radius:50% !important;}
 
   /* ── Mobile dropdown menu ── */
   .mobile-menu{
     position:fixed;bottom:76px;right:12px;z-index:500;
-    background:var(--surface);border:1px solid var(--border);
-    border-radius:12px;box-shadow:var(--shadow-md);
-    padding:8px;min-width:160px;
+    background:var(--surface);border:2px solid var(--border2);
+    border-radius:var(--radius);box-shadow:var(--shadow-lg);
+    padding:8px;min-width:180px;
     display:none;
+    animation:bounce-in .2s ease;
   }
   .mobile-menu.open{display:block;}
-  .mm-item{
-    display:flex;align-items:center;gap:9px;padding:9px 12px;
-    border-radius:7px;font-size:13px;cursor:pointer;
-    border:none;background:none;width:100%;text-align:left;
-    font-family:var(--font-j);color:var(--text);transition:background .12s;
-  }
-  .mm-item:hover{background:var(--surface2);}
-  .mm-item.danger{color:var(--red);}
-  .mm-item.danger:hover{background:var(--red-bg);}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1783,27 +1789,22 @@ function renderUserMgmt(){
       ? codes.map(([k,v])=>{
           return `
         <div class="invite-code-box">
-          <div style="flex:1;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-              <div class="invite-code">${v.code}</div>
-            </div>
-            <div class="invite-meta">発行日: ${new Date(v.createdAt).toLocaleDateString('ja-JP')} · 未使用</div>
-
-            <!-- 招待文プレビュー -->
-            <div style="background:#fff;border:1px solid var(--border2);border-radius:8px;padding:11px 13px;margin-top:10px;font-size:12px;line-height:1.8;color:var(--text);white-space:pre-wrap;" id="invite-text-${k}">CANVASに招待します！
+          <div class="invite-code">${v.code}</div>
+          <div class="invite-meta">発行日: ${new Date(v.createdAt).toLocaleDateString('ja-JP')} · 未使用</div>
+          <div id="invite-text-${k}" style="display:none;">CANVASに招待します！
 アプリを開いてGoogleログイン後、招待コードを入力してください。
 
 招待コード：${v.code}
 
 アプリURL：${appUrl}</div>
-
-            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="copyInviteBlock('${k}')" style="flex:1;font-size:12px;">
-                📋 上の文をコピー → LINEに貼り付けて送る
-              </button>
-              <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')">削除</button>
-            </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">コピー後、LINEを開いて相手のトークに貼り付けてください</div>
+          <div style="display:flex;gap:8px;margin-top:14px;">
+            <button class="btn btn-primary" onclick="copyInviteBlock('${k}')" style="flex:1;font-size:13px;">
+              📋 招待文をコピーする
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')">削除</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;">
+            ① コピーボタンを押す　② LINEを開く　③ トークに貼り付けて送信
           </div>
         </div>`;
         }).join('')
