@@ -398,6 +398,33 @@ textarea.fi{resize:vertical;min-height:70px;}
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
 /* ── Notes ── */
+/* Block Editor (Notion-style) */
+.block-editor{outline:none;min-height:200px;padding:4px 0;}
+.block-row{display:flex;align-items:flex-start;gap:6px;margin:1px 0;position:relative;group;}
+.block-row:hover .block-handle{opacity:1;}
+.block-handle{width:18px;flex-shrink:0;margin-top:2px;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .15s;cursor:pointer;}
+.block-handle-btn{width:18px;height:18px;border:none;background:none;cursor:pointer;color:var(--muted2);border-radius:4px;display:flex;align-items:center;justify-content:center;padding:0;font-size:11px;transition:all .12s;}
+.block-handle-btn:hover{background:var(--surface3);color:var(--text);}
+.block-content{flex:1;outline:none;min-height:1.6em;line-height:1.75;word-break:break-word;padding:2px 4px;border-radius:4px;transition:background .1s;font-size:14px;font-family:var(--font-j);}
+.block-content:focus{background:rgba(0,0,0,.02);}
+.block-content:empty:before{content:attr(data-placeholder);color:var(--muted2);pointer-events:none;}
+.block-content[data-type="h1"]{font-size:22px;font-weight:600;line-height:1.3;}
+.block-content[data-type="h2"]{font-size:18px;font-weight:600;line-height:1.3;}
+.block-content[data-type="h3"]{font-size:15px;font-weight:600;line-height:1.3;}
+.block-content[data-type="quote"]{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);background:var(--accent-bg);border-radius:0 4px 4px 0;}
+.block-content[data-type="bullet"]{padding-left:4px;}
+.block-content[data-type="numbered"]{padding-left:4px;}
+.block-bullet-icon{flex-shrink:0;color:var(--muted);font-size:13px;margin-top:3px;width:20px;text-align:center;user-select:none;}
+.block-type-menu{position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:var(--shadow-md);padding:6px;z-index:1000;min-width:180px;}
+.block-type-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--font-j);transition:background .1s;border:none;background:none;width:100%;text-align:left;color:var(--text);}
+.block-type-item:hover{background:var(--surface2);}
+.block-type-icon{font-size:15px;width:22px;text-align:center;}
+.block-toolbar{display:flex;gap:4px;padding:6px 8px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:var(--shadow-md);position:fixed;z-index:999;}
+.block-toolbar button{padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:5px;font-size:12px;color:var(--text);font-weight:500;transition:all .12s;}
+.block-toolbar button:hover{background:var(--surface2);}
+.block-toolbar button.active{background:var(--accent-bg);color:var(--accent);}
+.block-divider{height:1px;background:var(--border);margin:8px 0;width:100%;}
+.block-hr-row{pointer-events:none;}
 /* Notion-style rich text rendering */
 .notion-body{font-size:14px;line-height:1.85;color:var(--text);word-break:break-word;}
 .notion-body h1{font-size:20px;font-weight:600;margin:18px 0 6px;line-height:1.3;}
@@ -993,7 +1020,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 
 <!-- ── NOTE DETAIL MODAL ── -->
 <div class="overlay" id="ov-note-detail">
-  <div class="modal" style="max-width:600px;" id="note-detail-body"></div>
+  <div class="modal" style="max-width:720px;" id="note-detail-body"></div>
 </div>
 
 <!-- ── WEEKLY GOAL MODAL ── -->
@@ -2140,58 +2167,275 @@ function renderNotes() {
   }).join('');
 }
 
-// Markdown-like renderer for Notion-style display
-function renderNotionBody(text) {
-  if(!text) return '';
-  const lines = text.split('\n');
-  let html = '';
-  let inUl = false, inOl = false;
-  const closeList = () => {
-    if(inUl){ html += '</ul>'; inUl=false; }
-    if(inOl){ html += '</ol>'; inOl=false; }
-  };
-  lines.forEach(line => {
-    // Heading
-    if(line.startsWith('### ')){ closeList(); html += `<h3>${fmtInline(line.slice(4))}</h3>`; return; }
-    if(line.startsWith('## ')){ closeList(); html += `<h2>${fmtInline(line.slice(3))}</h2>`; return; }
-    if(line.startsWith('# ')){ closeList(); html += `<h1>${fmtInline(line.slice(2))}</h1>`; return; }
-    // Blockquote
-    if(line.startsWith('> ')){ closeList(); html += `<blockquote>${fmtInline(line.slice(2))}</blockquote>`; return; }
-    // HR
-    if(line.match(/^---+$/)){ closeList(); html += '<hr>'; return; }
-    // Checkbox
-    if(line.match(/^- \[( |x)\] /)){ closeList();
-      const checked = line[3]==='x';
-      html += `<div class="checkbox-item"><input type="checkbox" ${checked?'checked':''} disabled>${fmtInline(line.slice(6))}</div>`; return; }
-    // Unordered list
-    if(line.startsWith('- ') || line.startsWith('• ')){ if(!inUl){ if(inOl){html+='</ol>';inOl=false;} html+='<ul>'; inUl=true; } html+=`<li>${fmtInline(line.slice(2))}</li>`; return; }
-    // Ordered list
-    if(line.match(/^\d+\. /)){ if(!inOl){ if(inUl){html+='</ul>';inUl=false;} html+='<ol>'; inOl=true; } html+=`<li>${fmtInline(line.replace(/^\d+\. /,''))}</li>`; return; }
-    // Normal line
-    closeList();
-    if(line.trim()==='') html += '<p style="height:6px;"></p>';
-    else html += `<p>${fmtInline(line)}</p>`;
-  });
-  closeList();
-  return html;
-}
+// ═══════════════════════════════════════════════
+// BLOCK EDITOR — Notion-style
+// ═══════════════════════════════════════════════
+const BLOCK_TYPES = [
+  {type:'paragraph', icon:'¶',  label:'テキスト',    placeholder:'文章を入力…'},
+  {type:'h1',        icon:'H1', label:'見出し 1',    placeholder:'見出し 1'},
+  {type:'h2',        icon:'H2', label:'見出し 2',    placeholder:'見出し 2'},
+  {type:'h3',        icon:'H3', label:'見出し 3',    placeholder:'見出し 3'},
+  {type:'bullet',    icon:'•',  label:'箇条書き',    placeholder:'リスト項目'},
+  {type:'numbered',  icon:'1.', label:'番号付きリスト',placeholder:'リスト項目'},
+  {type:'quote',     icon:'❝',  label:'引用',        placeholder:'引用テキスト…'},
+  {type:'hr',        icon:'—',  label:'区切り線',    placeholder:''},
+];
 
-function fmtInline(text) {
-  if(!text) return '';
-  return text
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/`(.+?)`/g,'<code>$1</code>')
-    .replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
-}
-
+let _blocks = [];         // [{id, type, text}]
+let _editingNoteKey = null;
+let _blockTypeMenuEl = null;
+let _blockToolbarEl = null;
 let _noteEditMode = false;
 
+function genBlockId(){ return 'b' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+function blocksFromText(text) {
+  if(!text) return [{id:genBlockId(), type:'paragraph', text:''}];
+  const lines = (text||'').split('\n');
+  const blocks = [];
+  lines.forEach(line => {
+    if(line.startsWith('# '))        blocks.push({id:genBlockId(), type:'h1',      text:line.slice(2)});
+    else if(line.startsWith('## '))  blocks.push({id:genBlockId(), type:'h2',      text:line.slice(3)});
+    else if(line.startsWith('### ')) blocks.push({id:genBlockId(), type:'h3',      text:line.slice(4)});
+    else if(line.startsWith('- ') || line.startsWith('• ')) blocks.push({id:genBlockId(), type:'bullet',   text:line.slice(2)});
+    else if(line.match(/^\d+\. /))   blocks.push({id:genBlockId(), type:'numbered', text:line.replace(/^\d+\. /,'')});
+    else if(line.startsWith('> '))   blocks.push({id:genBlockId(), type:'quote',    text:line.slice(2)});
+    else if(line.match(/^---+$/))    blocks.push({id:genBlockId(), type:'hr',       text:''});
+    else                             blocks.push({id:genBlockId(), type:'paragraph', text:line});
+  });
+  return blocks.length ? blocks : [{id:genBlockId(), type:'paragraph', text:''}];
+}
+
+function blocksToText(blocks) {
+  return blocks.map(b => {
+    switch(b.type) {
+      case 'h1':        return '# ' + b.text;
+      case 'h2':        return '## ' + b.text;
+      case 'h3':        return '### ' + b.text;
+      case 'bullet':    return '- ' + b.text;
+      case 'numbered':  return '1. ' + b.text;
+      case 'quote':     return '> ' + b.text;
+      case 'hr':        return '---';
+      default:          return b.text;
+    }
+  }).join('\n');
+}
+
+function renderBlockEditor(containerId, blocks) {
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
+
+  let numberedIdx = 0;
+
+  blocks.forEach((block, i) => {
+    if(block.type === 'numbered') numberedIdx++;
+    else numberedIdx = 0;
+
+    const row = document.createElement('div');
+    row.className = 'block-row';
+    row.dataset.id = block.id;
+
+    // handle
+    const handle = document.createElement('div');
+    handle.className = 'block-handle';
+    handle.innerHTML = `
+      <button class="block-handle-btn" title="ブロックタイプを変更" onclick="showBlockTypeMenu('${block.id}',event)">⊞</button>
+      <button class="block-handle-btn" title="削除" onclick="deleteBlock('${block.id}')">✕</button>`;
+    row.appendChild(handle);
+
+    // bullet/number icon
+    if(block.type === 'bullet') {
+      const icon = document.createElement('div');
+      icon.className = 'block-bullet-icon';
+      icon.textContent = '•';
+      row.appendChild(icon);
+    } else if(block.type === 'numbered') {
+      const icon = document.createElement('div');
+      icon.className = 'block-bullet-icon';
+      icon.textContent = numberedIdx + '.';
+      row.appendChild(icon);
+    }
+
+    if(block.type === 'hr') {
+      const div = document.createElement('div');
+      div.className = 'block-divider block-hr-row';
+      row.appendChild(div);
+    } else {
+      const cfg = BLOCK_TYPES.find(t=>t.type===block.type) || BLOCK_TYPES[0];
+      const el = document.createElement('div');
+      el.className = 'block-content';
+      el.dataset.type = block.type;
+      el.dataset.id = block.id;
+      el.contentEditable = 'true';
+      el.dataset.placeholder = cfg.placeholder;
+      el.textContent = block.text;
+      el.spellcheck = false;
+
+      el.addEventListener('input', () => {
+        const b = _blocks.find(x=>x.id===block.id);
+        if(b) b.text = el.textContent;
+      });
+
+      el.addEventListener('keydown', e => handleBlockKey(e, block.id, containerId));
+      el.addEventListener('mouseup', () => showInlineToolbar(el));
+      el.addEventListener('keyup', () => showInlineToolbar(el));
+      el.addEventListener('focus', () => hideBlockTypeMenu());
+
+      row.appendChild(el);
+    }
+
+    container.appendChild(row);
+  });
+
+  // Add new block button at bottom
+  const addBtn = document.createElement('div');
+  addBtn.style.cssText = 'padding:6px 4px;color:var(--muted2);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;border-radius:6px;transition:color .1s;';
+  addBtn.innerHTML = '<span style="font-size:16px;line-height:1;">+</span> ブロックを追加';
+  addBtn.onmouseenter = () => addBtn.style.color = 'var(--muted)';
+  addBtn.onmouseleave = () => addBtn.style.color = 'var(--muted2)';
+  addBtn.onclick = () => { addBlock(null, 'paragraph', containerId); };
+  container.appendChild(addBtn);
+}
+
+function handleBlockKey(e, blockId, containerId) {
+  if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    addBlock(blockId, 'paragraph', containerId);
+  }
+  if(e.key === 'Backspace') {
+    const b = _blocks.find(x=>x.id===blockId);
+    if(b && b.text === '' && _blocks.length > 1) {
+      e.preventDefault();
+      deleteBlock(blockId, containerId, true);
+    }
+  }
+  // / to show type menu
+  if(e.key === '/' ) {
+    const b = _blocks.find(x=>x.id===blockId);
+    if(b && b.text === '') {
+      e.preventDefault();
+      const el = document.querySelector(`.block-content[data-id="${blockId}"]`);
+      if(el) showBlockTypeMenu(blockId, e, el);
+    }
+  }
+}
+
+function addBlock(afterId, type, containerId) {
+  const newBlock = {id:genBlockId(), type:type||'paragraph', text:''};
+  if(!afterId) {
+    _blocks.push(newBlock);
+  } else {
+    const idx = _blocks.findIndex(b=>b.id===afterId);
+    _blocks.splice(idx+1, 0, newBlock);
+  }
+  renderBlockEditor(containerId, _blocks);
+  setTimeout(() => {
+    const el = document.querySelector(`.block-content[data-id="${newBlock.id}"]`);
+    if(el) el.focus();
+  }, 20);
+}
+
+function deleteBlock(blockId, containerId, focusPrev) {
+  const cid = containerId || (_editingNoteKey ? `block-editor-${_editingNoteKey}` : null);
+  if(!cid) return;
+  const idx = _blocks.findIndex(b=>b.id===blockId);
+  if(idx === -1 || _blocks.length <= 1) return;
+  _blocks.splice(idx, 1);
+  renderBlockEditor(cid, _blocks);
+  if(focusPrev) {
+    const prevIdx = Math.max(0, idx-1);
+    setTimeout(() => {
+      const el = document.querySelector(`.block-content[data-id="${_blocks[prevIdx]?.id}"]`);
+      if(el){ el.focus(); const range=document.createRange(); range.selectNodeContents(el); range.collapse(false); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+    }, 20);
+  }
+}
+
+function showBlockTypeMenu(blockId, e, targetEl) {
+  hideBlockTypeMenu();
+  const rect = (targetEl || e.currentTarget).getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'block-type-menu';
+  menu.id = 'block-type-menu';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+
+  BLOCK_TYPES.forEach(t => {
+    const item = document.createElement('button');
+    item.className = 'block-type-item';
+    item.innerHTML = `<span class="block-type-icon">${t.icon}</span><span>${t.label}</span>`;
+    item.onclick = () => { changeBlockType(blockId, t.type); hideBlockTypeMenu(); };
+    menu.appendChild(item);
+  });
+
+  document.body.appendChild(menu);
+  _blockTypeMenuEl = menu;
+
+  setTimeout(() => {
+    document.addEventListener('click', hideBlockTypeMenu, {once:true});
+  }, 10);
+}
+
+function hideBlockTypeMenu() {
+  const el = document.getElementById('block-type-menu');
+  if(el) el.remove();
+  _blockTypeMenuEl = null;
+}
+
+function changeBlockType(blockId, newType) {
+  const b = _blocks.find(x=>x.id===blockId);
+  if(!b) return;
+  b.type = newType;
+  if(newType === 'hr') b.text = '';
+  const cid = _editingNoteKey ? `block-editor-${_editingNoteKey}` : null;
+  if(cid) renderBlockEditor(cid, _blocks);
+}
+
+function showInlineToolbar(el) {
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed || !sel.toString().trim()) {
+    hideInlineToolbar(); return;
+  }
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  let toolbar = document.getElementById('block-inline-toolbar');
+  if(!toolbar) {
+    toolbar = document.createElement('div');
+    toolbar.className = 'block-toolbar';
+    toolbar.id = 'block-inline-toolbar';
+    toolbar.innerHTML = `
+      <button onclick="execFmt('bold')" title="太字"><b>B</b></button>
+      <button onclick="execFmt('italic')" title="斜体"><i>I</i></button>
+      <button onclick="execFmt('underline')" title="下線"><u>U</u></button>`;
+    document.body.appendChild(toolbar);
+  }
+  toolbar.style.top = (rect.top - 44 + window.scrollY) + 'px';
+  toolbar.style.left = (rect.left + rect.width/2 - 60) + 'px';
+  toolbar.style.display = 'flex';
+}
+
+function hideInlineToolbar() {
+  const t = document.getElementById('block-inline-toolbar');
+  if(t) t.style.display = 'none';
+}
+
+function execFmt(cmd) {
+  document.execCommand(cmd);
+  hideInlineToolbar();
+}
+
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed) hideInlineToolbar();
+});
+
+// ─── Updated Note functions ───
 function openNoteDetail(key) {
   _noteEditMode = false;
+  _editingNoteKey = null;
+  _blocks = [];
   renderNoteDetailModal(key);
   openOv('ov-note-detail');
 }
@@ -2217,7 +2461,6 @@ function renderNoteDetailModal(key) {
     const avHTML = pu?.photo
       ? `<img src="${pu.photo}">`
       : `<div class="note-post-av-ph" style="background:${avBg(avColor(pu?.name||''))};color:${avColor(pu?.name||'')};">${initials(pu?.name||'?')}</div>`;
-    const linked = fmtInline(p.text||'');
     const isMe = p.uid === myId;
     return `<div class="note-post">
       <div class="note-post-av">${avHTML}</div>
@@ -2225,79 +2468,95 @@ function renderNoteDetailModal(key) {
         <div class="note-post-meta">
           <span class="note-post-name">${pu?.name||'—'}</span>
           <span class="note-post-time">${timeAgo(p.createdAt)}</span>
-          ${isMe?`<button onclick="deleteNotePost('${key}','${p._key}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted2);font-size:10px;padding:2px 4px;border-radius:4px;" title="削除">✕</button>`:''}
+          ${isMe?`<button onclick="deleteNotePost('${key}','${p._key}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted2);font-size:10px;padding:2px 4px;border-radius:4px;">✕</button>`:''}
         </div>
-        <div class="note-post-text">${linked}</div>
+        <div class="note-post-text">${fmtInline(p.text||'')}</div>
       </div>
     </div>`;
   };
 
-  // Edit mode UI
-  const editModeBody = _noteEditMode ? `
-    <div style="margin-bottom:12px;">
-      <label class="fl">タイトル</label>
-      <input class="fi" id="ned-title" value="${(n.title||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px;">
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <div style="flex:1;"><label class="fl">日付</label><input type="date" class="fi" id="ned-date" value="${n.noteDate||''}"></div>
-        <div style="flex:1;"><label class="fl">参加者</label><input class="fi" id="ned-members" value="${(n.members||'').replace(/"/g,'&quot;')}" placeholder="田中、鈴木…"></div>
-      </div>
-      <label class="fl">内容</label>
-      <textarea class="note-edit-area" id="ned-body">${(n.body||'').replace(/</g,'&lt;')}</textarea>
-      <div class="note-format-hint">
-        # 見出し1 &nbsp;## 見出し2 &nbsp;**太字** &nbsp;*斜体* &nbsp;\`コード\`<br>
-        - 箇条書き &nbsp;1. 番号付き &nbsp;> 引用 &nbsp;--- 区切り線
-      </div>
-    </div>
-    <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;renderNoteDetailModal('${key}')">キャンセル</button>
-      <button class="btn btn-primary btn-sm" onclick="updateNote('${key}')">保存</button>
-    </div>` : `
-    ${n.body?`<div class="notion-body" style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:16px;">${renderNotionBody(n.body)}</div>`:''}`;
+  if(_noteEditMode) {
+    // Edit mode: block editor
+    _editingNoteKey = key;
+    if(!_blocks.length) _blocks = blocksFromText(n.body||'');
 
-  document.getElementById('note-detail-body').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap;">
-          <span class="note-cat-badge ${cat.cls}">${cat.icon} ${n.category}</span>
-          ${n.noteDate?`<span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:4px;">📅 ${noteDateFmt}</span>`:''}
+    document.getElementById('note-detail-body').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="flex:1;margin-right:12px;">
+          <input class="fi" id="ned-title" value="${(n.title||'').replace(/"/g,'&quot;')}" style="font-size:16px;font-weight:600;border:none;background:transparent;padding:4px 0;" placeholder="タイトル">
         </div>
-        <h2 style="font-size:17px;font-weight:600;line-height:1.4;">${n.title}</h2>
-        <div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span>${u?.name||'—'} · ${timeAgo(n.createdAt)}</span>
-          ${n.members?`<span>👥 ${n.members}</span>`:''}
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;_blocks=[];renderNoteDetailModal('${key}')">キャンセル</button>
+          <button class="btn btn-primary btn-sm" onclick="updateNote('${key}')">保存</button>
         </div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
-        ${canEdit&&!_noteEditMode?`<button class="btn btn-ghost btn-sm" onclick="_noteEditMode=true;renderNoteDetailModal('${key}')">編集</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')">削除</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <div><label class="fl">日付</label><input type="date" class="fi" id="ned-date" value="${n.noteDate||''}" style="width:auto;"></div>
+        <div style="flex:1;min-width:140px;"><label class="fl">参加者</label><input class="fi" id="ned-members" value="${(n.members||'').replace(/"/g,'&quot;')}" placeholder="田中、鈴木…"></div>
       </div>
-    </div>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface);margin-bottom:16px;min-height:220px;">
+        <div id="block-editor-${key}" class="block-editor"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted2);margin-bottom:14px;">Enter で新しいブロック · ⊞ でタイプ変更 · 文字選択でツールバー表示 · / でコマンドメニュー</div>`;
 
-    ${editModeBody}
+    renderBlockEditor(`block-editor-${key}`, _blocks);
+    setTimeout(() => {
+      const first = document.querySelector(`#block-editor-${key} .block-content`);
+      if(first) first.focus();
+    }, 50);
 
-    <div style="border-top:1px solid var(--border);padding-top:14px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">コメント (${posts.length}件)</div>
-      <div id="note-posts-thread-${key}" style="max-height:300px;overflow-y:auto;margin-bottom:14px;">
-        ${posts.length ? posts.map(renderPost).join('') : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">まだコメントがありません</div>'}
+  } else {
+    // View mode
+    document.getElementById('note-detail-body').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap;">
+            <span class="note-cat-badge ${cat.cls}">${cat.icon} ${n.category}</span>
+            ${n.noteDate?`<span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:4px;">📅 ${noteDateFmt}</span>`:''}
+          </div>
+          <h2 style="font-size:17px;font-weight:600;line-height:1.4;">${n.title}</h2>
+          <div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;">
+            <span>${u?.name||'—'} · ${timeAgo(n.createdAt)}</span>
+            ${n.members?`<span>👥 ${n.members}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
+          ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="_noteEditMode=true;_blocks=[];renderNoteDetailModal('${key}')">編集</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')">削除</button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-end;">
-        <textarea id="note-post-input-${key}" class="fi" placeholder="コメント、アイデア、URLなど…" style="flex:1;min-height:54px;resize:none;font-size:13px;" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){postNoteComment('${key}');event.preventDefault();}"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="postNoteComment('${key}')">送信</button>
+      ${n.body?`<div class="notion-body" style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">${renderNotionBody(n.body)}</div>`:'<div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;color:var(--muted2);font-size:13px;">内容がありません。「編集」から追加してください。</div>'}
+      <div style="border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">コメント (${posts.length}件)</div>
+        <div id="note-posts-thread-${key}" style="max-height:280px;overflow-y:auto;margin-bottom:14px;">
+          ${posts.length ? posts.map(renderPost).join('') : '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px;">まだコメントがありません</div>'}
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="note-post-input-${key}" class="fi" placeholder="コメント、アイデア、URLなど…" style="flex:1;min-height:54px;resize:none;font-size:13px;" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){postNoteComment('${key}');event.preventDefault();}"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="postNoteComment('${key}')">送信</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:3px;">Cmd/Ctrl + Enter で送信</div>
       </div>
-      <div style="font-size:10px;color:var(--muted2);margin-top:3px;">Cmd/Ctrl + Enter で送信</div>
-    </div>
-    <div style="margin-top:14px;text-align:right;"><button class="btn btn-ghost btn-sm" onclick="closeOv('ov-note-detail')">閉じる</button></div>`;
+      <div style="margin-top:14px;text-align:right;"><button class="btn btn-ghost btn-sm" onclick="closeOv('ov-note-detail')">閉じる</button></div>`;
+  }
 }
 
 function updateNote(key) {
-  const title   = document.getElementById('ned-title')?.value.trim();
-  const body    = document.getElementById('ned-body')?.value;
-  const noteDate= document.getElementById('ned-date')?.value;
-  const members = document.getElementById('ned-members')?.value.trim();
+  const title    = document.getElementById('ned-title')?.value.trim();
+  const noteDate = document.getElementById('ned-date')?.value;
+  const members  = document.getElementById('ned-members')?.value.trim();
   if(!title){ toast('タイトルを入力してください'); return; }
+  // Sync current block texts from DOM
+  _blocks.forEach(b => {
+    const el = document.querySelector(`.block-content[data-id="${b.id}"]`);
+    if(el) b.text = el.textContent;
+  });
+  const body = blocksToText(_blocks);
   fbUpdate(`notes/${key}`, {title, body, noteDate, members, updatedAt:Date.now()});
   _noteEditMode = false;
-  toast('更新しました');
+  _blocks = [];
+  _editingNoteKey = null;
+  toast('保存しました！');
   setTimeout(()=>renderNoteDetailModal(key), 300);
 }
 
@@ -2372,6 +2631,7 @@ function deleteNote(key) {
   if(!confirm('このスレッドを削除しますか？投稿もすべて削除されます。')) return;
   fbRemove(`notes/${key}`);
   fbRemove(`notePosts/${key}`);
+  _blocks = []; _editingNoteKey = null; _noteEditMode = false;
   toast('削除しました');
   closeOv('ov-note-detail');
 }
