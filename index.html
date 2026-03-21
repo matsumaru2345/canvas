@@ -720,7 +720,11 @@ textarea.fi{resize:vertical;min-height:70px;}
       </div>
       <div style="padding:26px">
         <!-- Invite Codes section -->
-        <div class="sec-head" style="margin-bottom:12px;"><h2>招待コード</h2></div>
+        <div class="sec-head" style="margin-bottom:6px;"><h2>招待コード</h2></div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
+          「＋ 招待コード発行」を押すと6桁のコードが作られます。<br>
+          <strong style="color:var(--text);">LINEで送る</strong> ボタンでそのまま友だちに送れます。受け取った人はアプリを開いてコードを入力するだけで参加できます。
+        </p>
         <div id="invite-codes-list" style="margin-bottom:24px;"></div>
 
         <!-- Pending users -->
@@ -1226,15 +1230,33 @@ function renderUserMgmt(){
   const inviteList = document.getElementById('invite-codes-list');
   if(inviteList){
     const codes = Object.entries(invites).filter(([,v])=>!v.used);
+    const appUrl = window.location.href.split('?')[0];
     inviteList.innerHTML = codes.length
-      ? codes.map(([k,v])=>`
+      ? codes.map(([k,v])=>{
+          const shareText = `CANVASに招待します！\nアプリを開いてGoogleログイン後、招待コードを入力してください。\n\n招待コード：${v.code}\n\nアプリURL：${appUrl}`;
+          const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+          const smsUrl = `sms:?body=${encodeURIComponent(shareText)}`;
+          return `
         <div class="invite-code-box">
-          <div>
-            <div class="invite-code">${v.code}</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <div class="invite-code">${v.code}</div>
+              <button class="btn btn-ghost btn-sm" onclick="copyInviteText('${v.code}','${appUrl}')" style="font-size:11px;">📋 コピー</button>
+            </div>
             <div class="invite-meta">発行日: ${new Date(v.createdAt).toLocaleDateString('ja-JP')} · 未使用</div>
+            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+              <a href="${lineUrl}" target="_blank" class="btn btn-sm" style="background:#06C755;color:#fff;border:none;display:flex;align-items:center;gap:5px;text-decoration:none;font-size:12px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                LINEで送る
+              </a>
+              <a href="${smsUrl}" class="btn btn-ghost btn-sm" style="font-size:12px;display:flex;align-items:center;gap:5px;text-decoration:none;">
+                💬 SMSで送る
+              </a>
+              <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')" style="margin-left:auto;">削除</button>
+            </div>
           </div>
-          <button class="btn btn-danger btn-sm" onclick="deleteInvite('${k}')">削除</button>
-        </div>`).join('')
+        </div>`;
+        }).join('')
       : `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;color:var(--muted);font-size:13px;">有効な招待コードがありません。「招待コード発行」ボタンで作成してください。</div>`;
   }
 
@@ -1279,7 +1301,12 @@ function renderUserMgmt(){
 function generateInviteCode(){
   const code = Math.random().toString(36).substring(2,8).toUpperCase();
   fbPush('invites',{code,createdAt:Date.now(),createdBy:window._me?.uid||'',used:false});
-  toast(`招待コード「${code}」を発行しました`);
+  toast(`招待コード「${code}」を発行しました！下のボタンで送れます`);
+}
+
+function copyInviteText(code, appUrl){
+  const text = `CANVASに招待します！\nアプリを開いてGoogleログイン後、招待コードを入力してください。\n\n招待コード：${code}\n\nアプリURL：${appUrl}`;
+  navigator.clipboard.writeText(text).then(()=>toast('招待テキストをコピーしました！LINEやメールに貼り付けてください'));
 }
 
 function deleteInvite(key){ fbRemove(`invites/${key}`); toast('招待コードを削除しました'); }
