@@ -1848,13 +1848,28 @@ function renderSchedule(){
 function renderUserMgmt(){
   if(window._myRole !== 'admin') return;
 
-  const users = Object.values(window._data.users);
-  // Fix: ensure admin user appears in list even if status is missing
   const myUid = window._me?.uid;
-  const myUserData = window._data.users[myUid];
-  if(myUid && myUserData && !myUserData.status) {
-    fbUpdate(`users/${myUid}`, {status: window._myRole==='admin'?'admin':'approved'});
+  const me = window._me;
+
+  // Always ensure self is in the users map
+  if(myUid && !window._data.users[myUid] && me) {
+    window._data.users[myUid] = {
+      uid: myUid, name: me.displayName, displayName: me.displayName,
+      email: me.email, photo: me.photoURL||'',
+      status: 'admin', role: 'admin', joinedAt: Date.now()
+    };
+    // Also save to Firebase if missing
+    fbUpdate(`users/${myUid}`, {
+      uid: myUid, name: me.displayName,
+      email: me.email, photo: me.photoURL||'',
+      status: 'admin', role: 'admin'
+    });
   }
+
+  // Use entries to keep Firebase key
+  const userEntries = Object.entries(window._data.users);
+  const users = userEntries.map(([key, u]) => ({...u, _fbKey: key}));
+
   const pending = users.filter(u=>u.status==='pending');
   const pendingLabel = document.getElementById('pending-count-label');
   if(pendingLabel) pendingLabel.textContent = `${pending.length}人が承認待ちです`;
@@ -1901,17 +1916,19 @@ function renderUserMgmt(){
       admin: '<span class="user-status-pill pill-admin">★ 管理者</span>',
       blocked: '<span class="user-status-pill pill-blocked">✕ ブロック</span>'
     };
-    const isMe = u.uid === window._me?.uid;
+    // Use _fbKey (Firebase key) which equals uid for new users
+    const uid = u._fbKey || u.uid || u.uid;
+    const isMe = uid === window._me?.uid;
     const roleMap = {member:'メンバー', admin:'管理者'};
     const actions = isMe
       ? `<span style="font-size:11px;color:var(--muted);">（自分）</span>`
       : `<div style="display:flex;gap:5px;flex-wrap:wrap;">
-          ${u.status==='pending'?`<button class="btn btn-green btn-sm" onclick="approveUser('${u.uid}')">承認</button>`:''}
-          ${u.status==='approved'?`<button class="btn btn-accent btn-sm" onclick="promoteUser('${u.uid}')">管理者に</button>`:''}
-          ${u.status==='admin'?`<button class="btn btn-ghost btn-sm" onclick="demoteUser('${u.uid}')">権限解除</button>`:''}
-          ${u.status!=='blocked'?`<button class="btn btn-danger btn-sm" onclick="blockUser('${u.uid}')">ブロック</button>`:`<button class="btn btn-ghost btn-sm" onclick="approveUser('${u.uid}')">解除</button>`}
+          ${u.status==='pending'?`<button class="btn btn-green btn-sm" onclick="approveUser('${uid}')">承認</button>`:''}
+          ${u.status==='approved'?`<button class="btn btn-accent btn-sm" onclick="promoteUser('${uid}')">管理者に</button>`:''}
+          ${u.status==='admin'?`<button class="btn btn-ghost btn-sm" onclick="demoteUser('${uid}')">権限解除</button>`:''}
+          ${u.status!=='blocked'?`<button class="btn btn-danger btn-sm" onclick="blockUser('${uid}')">ブロック</button>`:`<button class="btn btn-ghost btn-sm" onclick="approveUser('${uid}')">解除</button>`}
         </div>`;
-    return `<tr>
+    return `<tr style="${isMe?'background:var(--accent-bg);':''}">
       <td data-label="ユーザー">
         <div style="display:flex;align-items:center;gap:9px;">
           ${u.photo?`<img src="${u.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`:`<div style="width:30px;height:30px;border-radius:50%;background:${avBg(avColor(u.name||''))};color:${avColor(u.name||'')};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;">${initials(u.name||'?')}</div>`}
