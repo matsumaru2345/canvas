@@ -880,7 +880,7 @@ textarea.fi{resize:vertical;min-height:70px;}
     <div class="logo-area">
       <div class="logo-mark"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></div>
       <div class="logo-text">CANVAS<small>Design Collab</small></div>
-      <span class="sync-dot" id="sync-dot"></span>
+      <span class="sync-dot" id="sync-dot"></span><span style="font-size:9px;color:var(--muted2);margin-left:4px;">v27</span>
     </div>
     <nav class="nav">
       <div class="nav-sec">メニュー</div>
@@ -3184,37 +3184,58 @@ function renderHabitTheme() {
   const section = document.getElementById('habit-theme-section');
   if(!section) return;
   const now = new Date();
-  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const monthNum = now.getMonth() + 1;
+  const thisMonth = now.getFullYear() + '-' + String(monthNum).padStart(2,'0');
   const isAdmin = window._myRole === 'admin';
 
-  // Find current month's theme
+  // 1. Firebaseの手動テーマを優先
   const themes = window._data.habitThemes || [];
-  const current = themes.find(t => t.month === thisMonth) || themes[themes.length - 1];
+  const manualTheme = themes.find(t => t.month === thisMonth);
+
+  // 2. なければ埋め込みスケッチテーマにフォールバック
+  const sketchTheme = getSketchTheme(monthNum);
+  const current = manualTheme || (sketchTheme ? {
+    emoji: sketchTheme.emoji,
+    title: sketchTheme.title,
+    desc: sketchTheme.desc,
+    month: thisMonth,
+    _builtin: true
+  } : null);
+
+  const ruleHTML = `<div style="background:rgba(255,255,255,.55);border-radius:8px;padding:9px 12px;margin-top:10px;font-size:11px;line-height:1.8;color:var(--text);">
+    📌 週3枚以上 &nbsp;｜&nbsp; 模写OK &nbsp;｜&nbsp; スタイル自由<br>
+    <span style="color:var(--muted);">テーマの中ならなんでもOK。数に慣れることが目標！</span>
+  </div>`;
 
   if(!current) {
-    section.innerHTML = `<div class="theme-banner"><div class="theme-banner-emoji">💡</div><div class="theme-banner-title">今月のテーマは未設定です</div><div class="theme-banner-desc">下の提案エリアから提案してみましょう！</div>${isAdmin?`<button class="theme-banner-edit" onclick="openThemeModal()">＋ 設定</button>`:''}</div>`;
-    const actions = document.getElementById('habit-topbar-actions');
-    if(actions) {
-      actions.innerHTML = `${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="openThemeModal()">📌 テーマ設定</button>`:''}<button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
-    }
-    return;
+    section.innerHTML = `<div class="theme-banner">
+      <div class="theme-banner-emoji">💡</div>
+      <div class="theme-banner-title">今月のテーマは未設定です</div>
+      <div class="theme-banner-desc">下の提案エリアから提案してみましょう！</div>
+      ${isAdmin?`<button class="theme-banner-edit" onclick="openThemeModal()">＋ 設定</button>`:''}
+    </div>`;
+  } else {
+    const d = new Date(current.month + '-01');
+    const monthLabel = d.getFullYear() + '年' + monthNum + '月のスケッチテーマ';
+    section.innerHTML = `
+      <div class="theme-banner">
+        <div class="theme-banner-month">${monthLabel}${current._builtin?' 🗓':''}</div>
+        <div class="theme-banner-emoji">${current.emoji || '✏️'}</div>
+        <div class="theme-banner-title">${current.title}</div>
+        ${current.desc ? `<div class="theme-banner-desc">${current.desc}</div>` : ''}
+        ${ruleHTML}
+        ${isAdmin && !current._builtin ? `<button class="theme-banner-edit" onclick="openThemeModal('${current._key}')">編集</button>` : ''}
+        ${isAdmin && current._builtin ? `<button class="theme-banner-edit" onclick="openThemeModal()">カスタム設定</button>` : ''}
+      </div>`;
   }
 
-  const d = new Date(current.month + '-01');
-  const monthLabel = d.getFullYear() + '年' + (d.getMonth()+1) + '月のテーマ';
-  section.innerHTML = `
-    <div class="theme-banner">
-      <div class="theme-banner-month">${monthLabel}</div>
-      <div class="theme-banner-emoji">${current.emoji || '✏️'}</div>
-      <div class="theme-banner-title">${current.title}</div>
-      ${current.desc ? `<div class="theme-banner-desc">${current.desc}</div>` : ''}
-      ${isAdmin ? `<button class="theme-banner-edit" onclick="openThemeModal('${current._key}')">編集</button>` : ''}
-    </div>`;
-
-  // Update topbar
+  // topbar更新
   const actions = document.getElementById('habit-topbar-actions');
-  if(actions && isAdmin) {
-    actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openThemeModal('${current._key}')">📌 テーマ編集</button><button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
+  if(actions) {
+    const editBtn = isAdmin
+      ? `<button class="btn btn-ghost btn-sm" onclick="openThemeModal(${manualTheme?`'${manualTheme._key}'`:''})">${manualTheme?'📌 テーマ編集':'📌 テーマ設定'}</button>`
+      : '';
+    actions.innerHTML = editBtn + `<button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
   }
 }
 
@@ -3891,28 +3912,30 @@ function resetWeeklyModal() {
 }
 
 function openWeeklyModal() {
-  resetWeeklyModal();
-  document.getElementById('wg-name').value='';
-  document.getElementById('wg-unit').value='';
-  document.getElementById('wg-target').value='';
-  document.getElementById('wg-emoji').value='🎨';
-  document.getElementById('wg-color').value='#4f46e5';
-  document.getElementById('wg-reset-day').value='1';
-  document.getElementById('wg-reset-preview').textContent='毎週月曜日にリセットされます';
-  document.querySelectorAll('.color-pick').forEach(b=>b.classList.remove('active-color'));
-  document.querySelector('.color-pick').classList.add('active-color');
-  // reset day buttons
-  document.querySelectorAll('.reset-day-btn').forEach((b,i) => {
-    b.style.background = i===0 ? 'var(--accent-bg)' : 'var(--surface2)';
-    b.style.color = i===0 ? 'var(--accent)' : 'var(--muted)';
-    b.style.borderColor = i===0 ? 'rgba(29,78,216,.3)' : 'var(--border2)';
+  try { resetWeeklyModal(); } catch(e) {}
+  const setVal = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  setVal('wg-name', '');
+  setVal('wg-unit', '');
+  setVal('wg-target', '');
+  setVal('wg-emoji', '🎨');
+  setVal('wg-color', '#4f46e5');
+  setVal('wg-reset-day', '1');
+  const preview = document.getElementById('wg-reset-preview');
+  if(preview) preview.textContent = '毎週月曜日にリセットされます';
+  document.querySelectorAll('.color-pick').forEach((b,i) => {
+    b.classList.toggle('active-color', i===0);
   });
-  // emoji picker clicks
-  document.getElementById('wg-emoji-picker').onclick = e => {
+  document.querySelectorAll('.reset-day-btn').forEach((b,i) => {
+    b.style.background   = i===0 ? 'var(--accent-bg)' : 'var(--surface2)';
+    b.style.color        = i===0 ? 'var(--accent)'    : 'var(--muted)';
+    b.style.borderColor  = i===0 ? 'rgba(79,70,229,.3)' : 'var(--border2)';
+  });
+  const picker = document.getElementById('wg-emoji-picker');
+  if(picker) picker.onclick = e => {
     const txt = e.target.textContent?.trim();
-    if(txt && txt.length <= 2) document.getElementById('wg-emoji').value = txt;
+    if(txt && txt.length <= 2) setVal('wg-emoji', txt);
   };
-  openOv('ov-weekly');
+  document.getElementById('ov-weekly').classList.add('open');
 }
 
 function selectWgColor(color, el) {
