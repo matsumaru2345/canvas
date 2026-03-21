@@ -102,6 +102,8 @@ function initListeners() {
   onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
   onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
+  onValue(ref(db,'habitThemes'), snap => { window._data.habitThemes=[]; snap.forEach(c=>window._data.habitThemes.push({_key:c.key,...c.val()})); renderAll(); });
+  onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'notes'), snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'notePosts'), snap => { window._data.notePosts={}; snap.forEach(c=>{ window._data.notePosts[c.key]={}; c.forEach(p=>window._data.notePosts[c.key][p.key]=p.val()); }); renderAll(); });
   onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); renderAll(); });
@@ -143,7 +145,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-j);font-size:
 
 /* ── Pending Screen ── */
 #pending-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
-.pending-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;text-align:center;box-shadow:var(--shadow-md);max-width:400px;width:90%;}
+.pending-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 28px;text-align:center;box-shadow:var(--shadow-md);max-width:420px;width:92%;}
 .pending-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;background:var(--accent-bg);}
 .pending-icon{font-size:40px;margin-bottom:12px;}
 .pending-card h2{font-family:var(--font-s);font-size:18px;font-weight:500;margin-bottom:8px;}
@@ -397,6 +399,27 @@ textarea.fi{resize:vertical;min-height:70px;}
 /* ── Confetti canvas ── */
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:700;display:none;}
 
+/* ── Habit Board ── */
+.theme-banner{background:linear-gradient(135deg,var(--accent-bg) 0%,var(--purple-bg) 100%);border:1px solid rgba(29,78,216,.15);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;}
+.theme-banner-emoji{font-size:40px;line-height:1;margin-bottom:8px;}
+.theme-banner-month{font-size:10px;color:var(--accent);font-family:var(--font-s);font-weight:500;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;}
+.theme-banner-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.3;}
+.theme-banner-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+.theme-banner-edit{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.7);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);font-family:var(--font-j);transition:all .12s;}
+.theme-banner-edit:hover{background:#fff;}
+/* Share cards */
+.share-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
+.share-card:hover{box-shadow:var(--shadow-md);}
+.share-card-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--surface2);display:block;}
+.share-card-img-placeholder{width:100%;aspect-ratio:4/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:32px;}
+.share-card-body{padding:12px 14px;}
+.share-card-meta{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.share-card-name{font-size:12px;font-weight:500;}
+.share-card-time{font-size:10px;color:var(--muted);}
+.share-card-comment{font-size:13px;line-height:1.6;margin-bottom:6px;}
+.share-card-tag{display:inline-flex;align-items:center;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--accent-bg);color:var(--accent);font-family:var(--font-s);}
+.share-card-delete{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:11px;padding:3px 6px;border-radius:4px;transition:all .12s;margin-left:auto;}
+.share-card-delete:hover{color:var(--red);background:var(--red-bg);}
 /* ── Notes ── */
 /* Block Editor (Notion-style) */
 .block-editor{outline:none;min-height:200px;padding:4px 0;}
@@ -540,10 +563,11 @@ textarea.fi{resize:vertical;min-height:70px;}
   }
   .bn-item{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;padding:4px 2px;border:none;background:none;cursor:pointer;
-    color:var(--muted);font-size:9px;font-family:var(--font-j);
-    transition:color .12s;position:relative;
+    gap:2px;padding:4px 1px;border:none;background:none;cursor:pointer;
+    color:var(--muted);font-size:8px;font-family:var(--font-j);
+    transition:color .12s;position:relative;min-width:0;
   }
+  .bn-item svg{width:19px;height:19px;}
   .bn-item.active{color:var(--accent);}
   .bn-item svg{width:20px;height:20px;}
   .bn-badge{
@@ -559,6 +583,8 @@ textarea.fi{resize:vertical;min-height:70px;}
   .topbar-title{font-size:15px;}
   .topbar-actions .btn{padding:6px 10px;font-size:12px;}
   .topbar-actions select.fi{font-size:11px;padding:5px 8px;}
+  /* tasks topbar — hide select, show only add btn */
+  #tk-ev-filter{display:none;}
 
   /* ── Pages ── */
   .page{padding:14px 14px 10px;}
@@ -615,9 +641,11 @@ textarea.fi{resize:vertical;min-height:70px;}
 
   /* ── User mgmt table — card layout ── */
   .user-mgmt-table thead{display:none;}
-  .user-mgmt-table tr{display:block;padding:10px;border-bottom:1px solid var(--border);}
-  .user-mgmt-table td{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border:none;font-size:12px;}
-  .user-mgmt-table td:first-child{margin-bottom:4px;}
+  .user-mgmt-table tbody tr{display:block;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .user-mgmt-table td{display:block;padding:3px 0;border:none;font-size:12px;}
+  .user-mgmt-table td:first-child{margin-bottom:8px;}
+  .user-mgmt-table td:not(:first-child){display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .user-mgmt-table td:not(:first-child):before{content:attr(data-label);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-family:var(--font-s);flex-shrink:0;}
 
   /* ── Info grid ── */
   .info-grid{grid-template-columns:1fr 1fr;}
@@ -637,6 +665,20 @@ textarea.fi{resize:vertical;min-height:70px;}
 
   /* ── Invite code box ── */
   .invite-code-box{flex-direction:column;align-items:flex-start;gap:8px;}
+  .invite-code{font-size:24px;letter-spacing:.18em;}
+
+  /* ── Weekly goals grid ── */
+  #weekly-goals-grid{grid-template-columns:1fr !important;}
+
+  /* ── Notes filter ── */
+  #notes-filter-bar{gap:4px;}
+  #notes-filter-bar .chip{font-size:10px;padding:4px 8px;}
+
+  /* ── Note editor toolbar ── */
+  .fmt-btn{padding:5px 7px;font-size:11px;}
+
+  /* ── Pending card ── */
+  .pending-card{padding:28px 20px;}
 
   /* ── Mobile avatar menu btn visible ── */
   #mobile-menu-btn{display:flex !important;}
@@ -685,20 +727,27 @@ textarea.fi{resize:vertical;min-height:70px;}
     <img id="pending-avatar" class="pending-avatar" src="" alt="" onerror="this.style.display='none'">
     <div class="pending-icon">⏳</div>
     <h2>承認待ちです</h2>
-    <p id="pending-name" style="font-weight:500;font-size:14px;"></p>
+    <p id="pending-name" style="font-weight:500;font-size:15px;margin-bottom:4px;"></p>
     <p id="pending-email" style="font-size:12px;color:var(--muted);"></p>
     <div class="pending-badge">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
       管理者の承認を待っています
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">招待コードをお持ちの場合は入力してください</p>
-    <div class="invite-input-row">
-      <input id="invite-code-input" class="fi" placeholder="招待コード（6桁）" maxlength="6" style="text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-s);font-size:15px;text-align:center;">
-      <button class="btn btn-primary" onclick="redeemInvite()">使用</button>
+    <div style="background:var(--accent-bg);border:1px solid rgba(29,78,216,.15);border-radius:10px;padding:16px;margin-bottom:16px;text-align:left;">
+      <div style="font-size:12px;font-weight:500;color:var(--accent);margin-bottom:8px;">招待コードをお持ちですか？</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">管理者から受け取った6桁のコードを入力してください</div>
+      <input id="invite-code-input" placeholder="XXXXXX" maxlength="6"
+        style="width:100%;background:#fff;border:2px solid var(--border2);border-radius:10px;padding:14px;color:var(--text);font-family:var(--font-s);font-size:22px;text-align:center;letter-spacing:.2em;text-transform:uppercase;outline:none;margin-bottom:10px;box-sizing:border-box;transition:border-color .12s;"
+        oninput="this.value=this.value.toUpperCase()"
+        onfocus="this.style.borderColor='var(--accent)'"
+        onblur="this.style.borderColor='var(--border2)'"
+        onkeydown="if(event.key==='Enter')redeemInvite()">
+      <button onclick="redeemInvite()" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:15px;font-family:var(--font-j);font-weight:500;cursor:pointer;transition:opacity .12s;" onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">
+        参加する
+      </button>
+      <div id="invite-result" style="margin-top:10px;font-size:13px;text-align:center;min-height:20px;"></div>
     </div>
-    <div style="margin-top:16px;">
-      <button class="btn btn-ghost" style="width:100%;font-size:12px;" onclick="logoutApp()">別のアカウントでログイン</button>
-    </div>
+    <button class="btn btn-ghost" style="width:100%;font-size:12px;" onclick="logoutApp()">別のアカウントでログイン</button>
   </div>
 </div>
 
@@ -731,7 +780,11 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
         <span>スケジュール</span>
       </button>
-      <button class="nav-item" onclick="showPage('weekly')">
+      <button class="nav-item" onclick="showPage('habit')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z"/></svg>
+        <span>習慣ボード</span>
+      </button>
+      <button class="nav-item" onclick="showPage('weekly')" style="display:none;" id="nav-weekly-hidden">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
         <span>週間ワーク</span>
       </button>
@@ -866,6 +919,43 @@ textarea.fi{resize:vertical;min-height:70px;}
       </div>
     </div>
 
+    <!-- Habit Board -->
+    <div id="page-habit" class="page">
+      <div class="topbar">
+        <span class="topbar-title">習慣ボード</span>
+        <div class="topbar-actions" id="habit-topbar-actions">
+          <button class="btn btn-primary" onclick="openShareModal()">＋ シェアする</button>
+        </div>
+      </div>
+      <div style="padding:16px 16px 20px;">
+
+        <!-- ① 今月のテーマ -->
+        <div id="habit-theme-section" style="margin-bottom:20px;"></div>
+
+        <!-- ② 今週の習慣進捗 -->
+        <div style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-family:var(--font-s);font-size:13px;font-weight:500;">今週の習慣</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="habit-week-label"></div>
+            </div>
+            <div style="display:flex;gap:5px;">
+              <button class="chip active" id="hwv-mine" onclick="setHabitView('mine',this)">自分</button>
+              <button class="chip" id="hwv-team" onclick="setHabitView('team',this)">チーム</button>
+              <button class="btn btn-ghost btn-sm" onclick="openWeeklyModal()">＋ 目標</button>
+            </div>
+          </div>
+          <div id="habit-weekly-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
+        </div>
+
+        <!-- ③ みんなのシェア -->
+        <div>
+          <div style="font-family:var(--font-s);font-size:13px;font-weight:500;margin-bottom:12px;">みんなのシェア</div>
+          <div id="habit-share-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Weekly Work -->
     <div id="page-weekly" class="page">
       <div class="topbar">
@@ -966,9 +1056,9 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
       タスク
     </button>
-    <button class="bn-item" id="bn-weekly" onclick="showPage('weekly')">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
-      週間
+    <button class="bn-item" id="bn-habit" onclick="showPage('habit')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z"/></svg>
+      習慣
     </button>
     <button class="bn-item" id="bn-notes" onclick="showPage('notes')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
@@ -1026,6 +1116,52 @@ textarea.fi{resize:vertical;min-height:70px;}
 <!-- ── NOTE DETAIL MODAL ── -->
 <div class="overlay" id="ov-note-detail">
   <div class="modal" style="max-width:720px;" id="note-detail-body"></div>
+</div>
+
+<!-- ── SHARE MODAL ── -->
+<div class="overlay" id="ov-share">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title">シェアする</div>
+    <div class="fg">
+      <label class="fl">一言コメント</label>
+      <textarea class="fi" id="share-comment" placeholder="今週のスケッチ！テーマ〇〇で描きました 💪" style="min-height:72px;"></textarea>
+    </div>
+    <div class="fg">
+      <label class="fl">画像リンク（省略可）</label>
+      <input class="fi" id="share-image-url" placeholder="GoogleドライブやImgurのURLを貼り付け">
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;">
+        Googleドライブ：ファイルを右クリック→「共有」→「リンクを知っている全員」→URLをコピー
+      </div>
+    </div>
+    <div id="share-image-preview" style="display:none;margin-top:8px;border-radius:8px;overflow:hidden;max-height:200px;">
+      <img id="share-preview-img" src="" style="width:100%;object-fit:cover;border-radius:8px;" onerror="document.getElementById('share-image-preview').style.display='none'">
+    </div>
+    <div class="fg">
+      <label class="fl">習慣タグ（省略可）</label>
+      <div id="share-tag-picker" style="display:flex;gap:5px;flex-wrap:wrap;padding:4px 0;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-share')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveShare()">投稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── THEME MODAL (admin only) ── -->
+<div class="overlay" id="ov-theme">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">今月のテーマを設定</div>
+    <div class="fg"><label class="fl">テーマ</label><input class="fi" id="theme-title" placeholder="例：日常のモノをスケッチしよう"></div>
+    <div class="fg"><label class="fl">説明・ルール（省略可）</label><textarea class="fi" id="theme-desc" placeholder="例：身の回りのモノを1日1枚、自由なスタイルで。" style="min-height:60px;"></textarea></div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">開始月</label><input type="month" class="fi" id="theme-month"></div>
+      <div class="fg"><label class="fl">アイコン絵文字</label><input class="fi" id="theme-emoji" placeholder="✏️" maxlength="2" style="font-size:20px;text-align:center;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-theme')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveTheme()">設定</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── WEEKLY GOAL MODAL ── -->
@@ -1189,7 +1325,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{} };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[] };
 window._me   = null;
 window._myRole = 'member';
 
@@ -1287,6 +1423,7 @@ function renderAll(){
   if(_activePage==='usermgmt') renderUserMgmt();
   if(_activePage==='weekly')    renderWeekly();
   if(_activePage==='notes')     renderNotes();
+  if(_activePage==='habit')     renderHabit();
   renderNotifs();
 }
 
@@ -1550,7 +1687,7 @@ function renderUserMgmt(){
           ${u.status!=='blocked'?`<button class="btn btn-danger btn-sm" onclick="blockUser('${u.uid}')">ブロック</button>`:`<button class="btn btn-ghost btn-sm" onclick="approveUser('${u.uid}')">解除</button>`}
         </div>`;
     return `<tr>
-      <td>
+      <td data-label="ユーザー">
         <div style="display:flex;align-items:center;gap:9px;">
           ${u.photo?`<img src="${u.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`:`<div style="width:30px;height:30px;border-radius:50%;background:${avBg(avColor(u.name||''))};color:${avColor(u.name||'')};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;">${initials(u.name||'?')}</div>`}
           <div>
@@ -1559,10 +1696,10 @@ function renderUserMgmt(){
           </div>
         </div>
       </td>
-      <td>${statusMap[u.status]||statusMap['pending']}</td>
-      <td style="font-size:12px;">${roleMap[u.role]||'メンバー'}</td>
-      <td style="font-size:11px;color:var(--muted);">${u.joinedAt?new Date(u.joinedAt).toLocaleDateString('ja-JP'):'-'}</td>
-      <td>${actions}</td>
+      <td data-label="ステータス">${statusMap[u.status]||statusMap['pending']}</td>
+      <td data-label="役割" style="font-size:12px;">${roleMap[u.role]||'メンバー'}</td>
+      <td data-label="参加日" style="font-size:11px;color:var(--muted);">${u.joinedAt?new Date(u.joinedAt).toLocaleDateString('ja-JP'):'-'}</td>
+      <td data-label="操作">${actions}</td>
     </tr>`;
   }).join('');
 }
@@ -1616,26 +1753,46 @@ function blockUser(uid){ fbUpdate(`users/${uid}`,{status:'blocked'}); toast('ユ
 // Pending screen invite redemption
 window.redeemInvite = function(){
   const code = document.getElementById('invite-code-input').value.trim().toUpperCase();
-  if(code.length<4){ toast('コードを入力してください'); return; }
-  const invites = window._data.invites;
-  // Listen for invites even on pending screen
-  if(window._fb){
-    const {onValue,ref,db} = window._fb;
-    onValue(ref(db,'invites'), snap => {
+  const resultEl = document.getElementById('invite-result');
+  const showResult = (msg, color) => {
+    if(resultEl){ resultEl.textContent = msg; resultEl.style.color = color||'var(--muted)'; }
+  };
+  if(code.length < 4){ showResult('コードを入力してください', 'var(--amber)'); return; }
+  if(!window._fb){ showResult('接続中です。少し待ってから再試行してください', 'var(--muted)'); return; }
+
+  showResult('確認中...', 'var(--muted)');
+  const {get, ref, db} = window._fb;
+  // Use get() for one-time read (more reliable on mobile)
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js").then(m => {
+    m.get(m.ref(db, 'invites')).then(snap => {
       const codes = {};
-      snap.forEach(c=>codes[c.key]=c.val());
-      const match = Object.entries(codes).find(([,v])=>v.code===code&&!v.used);
+      snap.forEach(c => codes[c.key] = c.val());
+      const match = Object.entries(codes).find(([,v]) => v.code === code && !v.used);
       if(match){
         const [key] = match;
-        fbUpdate(`invites/${key}`,{used:true,usedBy:window._me?.uid,usedAt:Date.now()});
-        fbUpdate(`users/${window._me?.uid}`,{status:'approved',role:'member'});
-        toast('招待コードが有効です！参加しました🎉');
-        setTimeout(()=>location.reload(),1500);
+        const uid = window._me?.uid;
+        if(!uid){ showResult('ログインが必要です', 'var(--red)'); return; }
+        Promise.all([
+          fbUpdate(`invites/${key}`, {used:true, usedBy:uid, usedAt:Date.now()}),
+          fbUpdate(`users/${uid}`, {status:'approved', role:'member'})
+        ]).then(() => {
+          showResult('✓ 参加しました！読み込み中...', 'var(--green)');
+          setTimeout(() => location.reload(), 1200);
+        }).catch(() => {
+          showResult('エラーが発生しました。再試行してください', 'var(--red)');
+        });
       } else {
-        toast('無効な招待コードです');
+        showResult('招待コードが無効か、使用済みです', 'var(--red)');
+        document.getElementById('invite-code-input').style.borderColor = 'var(--red)';
+        setTimeout(() => {
+          const inp = document.getElementById('invite-code-input');
+          if(inp){ inp.style.borderColor='var(--border2)'; inp.value=''; inp.focus(); }
+        }, 2000);
       }
-    },{onlyOnce:true});
-  }
+    }).catch(() => {
+      showResult('通信エラーです。Wi-Fiを確認してください', 'var(--red)');
+    });
+  });
 };
 
 // ─── NOTIFICATIONS ───
@@ -2501,6 +2658,281 @@ function deleteNote(key) {
   closeOv('ov-note-detail');
 }
 
+// ═══════════════════════════════════════════════
+// HABIT BOARD
+// ═══════════════════════════════════════════════
+let _habitView = 'mine';
+
+function setHabitView(v, el) {
+  _habitView = v;
+  document.querySelectorAll('#page-habit .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderHabitWeekly();
+}
+
+// Convert Google Drive share URL to thumbnail URL
+function driveToImg(url) {
+  if(!url) return '';
+  // https://drive.google.com/file/d/FILE_ID/view
+  const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if(m1) return 'https://drive.google.com/thumbnail?id=' + m1[1] + '&sz=w600';
+  // https://drive.google.com/open?id=FILE_ID
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(m2) return 'https://drive.google.com/thumbnail?id=' + m2[1] + '&sz=w600';
+  // Already direct image URL
+  return url;
+}
+
+function renderHabit() {
+  renderHabitTheme();
+  renderHabitWeekly();
+  renderHabitShares();
+  // Show/hide admin controls
+  const isAdmin = window._myRole === 'admin';
+  const editBtn = document.querySelector('.theme-banner-edit');
+  if(editBtn) editBtn.style.display = isAdmin ? '' : 'none';
+}
+
+function renderHabitTheme() {
+  const section = document.getElementById('habit-theme-section');
+  if(!section) return;
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const isAdmin = window._myRole === 'admin';
+
+  // Find current month's theme
+  const themes = window._data.habitThemes || [];
+  const current = themes.find(t => t.month === thisMonth) || themes[themes.length - 1];
+
+  if(!current) {
+    section.innerHTML = isAdmin
+      ? `<div class="theme-banner" style="cursor:pointer;" onclick="openThemeModal()">
+          <div class="theme-banner-emoji">✏️</div>
+          <div class="theme-banner-title">今月のテーマを設定しよう</div>
+          <div class="theme-banner-desc">「＋ テーマを設定」ボタンでチームのテーマを決めましょう</div>
+          <button class="theme-banner-edit" onclick="event.stopPropagation();openThemeModal()">＋ 設定</button>
+        </div>`
+      : `<div class="theme-banner"><div class="theme-banner-emoji">✏️</div><div class="theme-banner-title">今月のテーマは未設定です</div></div>`;
+    // Update topbar
+    const actions = document.getElementById('habit-topbar-actions');
+    if(actions && isAdmin) {
+      actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openThemeModal()">📌 テーマ設定</button><button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
+    }
+    return;
+  }
+
+  const d = new Date(current.month + '-01');
+  const monthLabel = d.getFullYear() + '年' + (d.getMonth()+1) + '月のテーマ';
+  section.innerHTML = `
+    <div class="theme-banner">
+      <div class="theme-banner-month">${monthLabel}</div>
+      <div class="theme-banner-emoji">${current.emoji || '✏️'}</div>
+      <div class="theme-banner-title">${current.title}</div>
+      ${current.desc ? `<div class="theme-banner-desc">${current.desc}</div>` : ''}
+      ${isAdmin ? `<button class="theme-banner-edit" onclick="openThemeModal('${current._key}')">編集</button>` : ''}
+    </div>`;
+
+  // Update topbar
+  const actions = document.getElementById('habit-topbar-actions');
+  if(actions && isAdmin) {
+    actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openThemeModal('${current._key}')">📌 テーマ編集</button><button class="btn btn-primary" onclick="openShareModal()">＋ シェア</button>`;
+  }
+}
+
+function renderHabitWeekly() {
+  const grid = document.getElementById('habit-weekly-grid');
+  const label = document.getElementById('habit-week-label');
+  if(!grid) return;
+
+  const goals = window._data.weeklyGoals || [];
+  const logs  = window._data.weeklyLogs  || {};
+  const myId  = window._me?.uid;
+  const users = window._data.users;
+
+  // Week label
+  const refDay = goals.find(g=>g.uid===myId)?.resetDay ?? 1;
+  const weekKey = getThisWeekKeyForGoal(refDay);
+  const startDate = new Date(weekKey);
+  const endDate = new Date(startDate); endDate.setDate(startDate.getDate()+6);
+  const fmt = dt => (dt.getMonth()+1) + '/' + dt.getDate();
+  if(label) label.textContent = fmt(startDate) + ' 〜 ' + fmt(endDate) + '　あと' + daysUntilReset(refDay) + '日';
+
+  let displayGoals = _habitView === 'mine'
+    ? goals.filter(g => g.uid === myId)
+    : goals;
+
+  if(!displayGoals.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">＋</div><p>${_habitView==='mine'?'目標がありません。「＋ 目標」から追加しよう！':'まだ誰も目標を設定していません'}</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = displayGoals.map(g => {
+    const gWeekKey = getThisWeekKeyForGoal(g.resetDay ?? 1);
+    const logKey = g.uid + '_' + gWeekKey + '_' + g._key;
+    const cur = logs[logKey]?.count || 0;
+    const pct = Math.min(100, Math.round(cur / g.target * 100));
+    const done = pct >= 100;
+    const u = users[g.uid];
+    const isMine = g.uid === myId;
+
+    const avHTML = u?.photo
+      ? `<img src="${u.photo}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:20px;height:20px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500;">${initials(u?.name||'?')}</div>`;
+
+    return `<div class="wg-card" style="${done?'border-color:rgba(22,163,74,.3);':''}">
+      <div class="wg-stripe" style="background:${done?'var(--green)':g.color||'#1d4ed8'}"></div>
+      <div class="wg-body" style="padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px;">${g.emoji||'🎨'}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.name}</div>
+            <div style="font-size:10px;color:var(--muted);">${DAY_NAMES[g.resetDay??1]}リセット · 目標${g.target}${g.unit}</div>
+          </div>
+          ${!isMine ? avHTML : ''}
+          ${done ? '<span style="font-size:14px;">✅</span>' : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span>${done?'🎉 達成！':'進捗'}</span>
+          <span style="font-weight:500;color:${done?'var(--green)':'var(--text)'};">${cur} / ${g.target} ${g.unit}</span>
+        </div>
+        <div class="wg-prog-bar" style="margin-bottom:${isMine?'10px':'0'};">
+          <div class="wg-prog-fill" style="width:${pct}%;background:${done?'var(--green)':g.color||'#1d4ed8'};"></div>
+        </div>
+        ${isMine ? `<div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','',- 1)">−</button>
+          <span class="wg-count-val" style="font-size:20px;">${cur}</span>
+          <button class="wg-count-btn" onclick="updateWeeklyCount('${g._key}','',1)">＋</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHabitShares() {
+  const grid = document.getElementById('habit-share-grid');
+  if(!grid) return;
+  const shares = [...(window._data.habitShares||[])].sort((a,b)=>b.createdAt-a.createdAt);
+  const myId = window._me?.uid;
+
+  if(!shares.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">🖼</div><p>まだ投稿がありません。<br>「＋ シェアする」で最初の投稿をしよう！</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = shares.map(s => {
+    const u = window._data.users[s.uid];
+    const avHTML = u?.photo
+      ? `<img src="${u.photo}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;">${initials(u?.name||'?')}</div>`;
+    const imgUrl = driveToImg(s.imageUrl);
+    const isMe = s.uid === myId;
+
+    return `<div class="share-card">
+      ${imgUrl
+        ? `<img class="share-card-img" src="${imgUrl}" alt="" onerror="this.parentElement.querySelector('.share-card-img-placeholder').style.display='flex';this.style.display='none';">
+           <div class="share-card-img-placeholder" style="display:none;">🖼</div>`
+        : ''}
+      <div class="share-card-body">
+        <div class="share-card-meta">
+          ${avHTML}
+          <span class="share-card-name">${u?.name||'—'}</span>
+          <span class="share-card-time">${timeAgo(s.createdAt)}</span>
+          ${isMe ? `<button class="share-card-delete" onclick="deleteShare('${s._key}')">✕</button>` : ''}
+        </div>
+        ${s.comment ? `<div class="share-card-comment">${s.comment}</div>` : ''}
+        ${s.tag ? `<span class="share-card-tag">🎨 ${s.tag}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Share modal ──
+function openShareModal() {
+  document.getElementById('share-comment').value = '';
+  document.getElementById('share-image-url').value = '';
+  document.getElementById('share-image-preview').style.display = 'none';
+
+  // Populate tag picker from weekly goals
+  const myId = window._me?.uid;
+  const myGoals = (window._data.weeklyGoals||[]).filter(g=>g.uid===myId);
+  const tagPicker = document.getElementById('share-tag-picker');
+  tagPicker.innerHTML = myGoals.map(g =>
+    `<button type="button" class="chip" onclick="selectShareTag('${g.name}',this)">${g.emoji||'🎨'} ${g.name}</button>`
+  ).join('') + '<button type="button" class="chip" onclick="selectShareTag(\'\',this)">なし</button>';
+
+  // Image URL preview
+  document.getElementById('share-image-url').addEventListener('input', function() {
+    const url = driveToImg(this.value.trim());
+    const preview = document.getElementById('share-image-preview');
+    const img = document.getElementById('share-preview-img');
+    if(url) { img.src = url; preview.style.display = 'block'; }
+    else { preview.style.display = 'none'; }
+  });
+
+  openOv('ov-share');
+}
+
+let _selectedShareTag = '';
+function selectShareTag(tag, el) {
+  _selectedShareTag = tag;
+  document.querySelectorAll('#share-tag-picker .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function saveShare() {
+  const comment = document.getElementById('share-comment').value.trim();
+  const imageUrl = document.getElementById('share-image-url').value.trim();
+  if(!comment && !imageUrl) { toast('コメントか画像URLを入力してください'); return; }
+  const uid = window._me?.uid||'unknown';
+  fbPush('habitShares', {
+    uid, comment, imageUrl,
+    tag: _selectedShareTag,
+    createdAt: Date.now()
+  });
+  toast('シェアしました！🎉');
+  closeOv('ov-share');
+}
+
+function deleteShare(key) {
+  if(!confirm('この投稿を削除しますか？')) return;
+  fbRemove('habitShares/' + key);
+  toast('削除しました');
+}
+
+// ── Theme modal ──
+let _editThemeKey = null;
+function openThemeModal(key) {
+  _editThemeKey = key || null;
+  const t = key ? (window._data.habitThemes||[]).find(x=>x._key===key) : null;
+  const now = new Date();
+  document.getElementById('theme-title').value = t?.title || '';
+  document.getElementById('theme-desc').value = t?.desc || '';
+  document.getElementById('theme-emoji').value = t?.emoji || '✏️';
+  document.getElementById('theme-month').value = t?.month || (now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+  openOv('ov-theme');
+}
+
+function saveTheme() {
+  const title = document.getElementById('theme-title').value.trim();
+  if(!title) { toast('テーマを入力してください'); return; }
+  const obj = {
+    title,
+    desc: document.getElementById('theme-desc').value.trim(),
+    emoji: document.getElementById('theme-emoji').value.trim() || '✏️',
+    month: document.getElementById('theme-month').value,
+    createdBy: window._me?.uid||'',
+    updatedAt: Date.now()
+  };
+  if(_editThemeKey) {
+    fbUpdate('habitThemes/' + _editThemeKey, obj);
+    toast('テーマを更新しました');
+  } else {
+    fbPush('habitThemes', obj);
+    toast('今月のテーマを設定しました！');
+  }
+  closeOv('ov-theme');
+}
+
 // ─── WEEKLY WORK ───
 let _weeklyView = 'personal';
 
@@ -2778,12 +3210,12 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={dash:0,events:1,tasks:2,schedule:3,weekly:4,notes:5,usermgmt:6}[id];
+  const idx={dash:0,events:1,tasks:2,schedule:3,habit:4,weekly:5,notes:6,usermgmt:7}[id];
   const navItems=document.querySelectorAll('.nav-item');
   if(navItems[idx]) navItems[idx].classList.add('active');
   // sync bottom nav
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',weekly:'bn-weekly',notes:'bn-notes'};
+  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',habit:'bn-habit',notes:'bn-notes'};
   if(bnMap[id]) document.getElementById(bnMap[id])?.classList.add('active');
   _activePage=id; renderAll();
 }
