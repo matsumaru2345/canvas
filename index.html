@@ -448,6 +448,11 @@ textarea.fi{resize:vertical;min-height:70px;}
 /* edit mode */
 .note-edit-area{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;font-family:var(--font-j);font-size:13px;line-height:1.85;color:var(--text);outline:none;resize:vertical;min-height:180px;transition:border-color .12s;}
 .note-edit-area:focus{border-color:var(--accent);background:#fff;}
+
+/* Format toolbar buttons */
+.fmt-btn{padding:4px 8px;border:1px solid var(--border2);background:var(--surface);border-radius:5px;cursor:pointer;font-size:11px;font-family:var(--font-s);color:var(--text);transition:all .12s;line-height:1.4;}
+.fmt-btn:hover{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.3);}
+.fmt-btn.active-tab{background:var(--accent-bg);color:var(--accent);border-color:rgba(29,78,216,.3);}
 .note-format-hint{font-size:10px;color:var(--muted2);margin-top:4px;line-height:1.6;}
 .note-thread{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow);}
 .note-thread:hover{box-shadow:var(--shadow-md);}
@@ -2167,275 +2172,155 @@ function renderNotes() {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════
-// BLOCK EDITOR — Notion-style
-// ═══════════════════════════════════════════════
-const BLOCK_TYPES = [
-  {type:'paragraph', icon:'¶',  label:'テキスト',    placeholder:'文章を入力…'},
-  {type:'h1',        icon:'H1', label:'見出し 1',    placeholder:'見出し 1'},
-  {type:'h2',        icon:'H2', label:'見出し 2',    placeholder:'見出し 2'},
-  {type:'h3',        icon:'H3', label:'見出し 3',    placeholder:'見出し 3'},
-  {type:'bullet',    icon:'•',  label:'箇条書き',    placeholder:'リスト項目'},
-  {type:'numbered',  icon:'1.', label:'番号付きリスト',placeholder:'リスト項目'},
-  {type:'quote',     icon:'❝',  label:'引用',        placeholder:'引用テキスト…'},
-  {type:'hr',        icon:'—',  label:'区切り線',    placeholder:''},
-];
-
-let _blocks = [];         // [{id, type, text}]
-let _editingNoteKey = null;
-let _blockTypeMenuEl = null;
-let _blockToolbarEl = null;
+// ─── NOTE EDITOR (Simple toolbar + live preview) ───
 let _noteEditMode = false;
 
-function genBlockId(){ return 'b' + Date.now() + Math.random().toString(36).slice(2,6); }
+function fmtInline(text) {
+  if(!text) return '';
+  return text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" onclick="event.stopPropagation()">$1</a>');
+}
 
-function blocksFromText(text) {
-  if(!text) return [{id:genBlockId(), type:'paragraph', text:''}];
-  const lines = (text||'').split('\n');
-  const blocks = [];
+function renderNotionBody(text) {
+  if(!text) return '';
+  const lines = text.split('\n');
+  let html = '';
+  let inUl = false, inOl = false;
+  const closeList = () => {
+    if(inUl){ html += '</ul>'; inUl=false; }
+    if(inOl){ html += '</ol>'; inOl=false; }
+  };
   lines.forEach(line => {
-    if(line.startsWith('# '))        blocks.push({id:genBlockId(), type:'h1',      text:line.slice(2)});
-    else if(line.startsWith('## '))  blocks.push({id:genBlockId(), type:'h2',      text:line.slice(3)});
-    else if(line.startsWith('### ')) blocks.push({id:genBlockId(), type:'h3',      text:line.slice(4)});
-    else if(line.startsWith('- ') || line.startsWith('• ')) blocks.push({id:genBlockId(), type:'bullet',   text:line.slice(2)});
-    else if(line.match(/^\d+\. /))   blocks.push({id:genBlockId(), type:'numbered', text:line.replace(/^\d+\. /,'')});
-    else if(line.startsWith('> '))   blocks.push({id:genBlockId(), type:'quote',    text:line.slice(2)});
-    else if(line.match(/^---+$/))    blocks.push({id:genBlockId(), type:'hr',       text:''});
-    else                             blocks.push({id:genBlockId(), type:'paragraph', text:line});
+    if(line.startsWith('### ')){ closeList(); html += `<h3>${fmtInline(line.slice(4))}</h3>`; return; }
+    if(line.startsWith('## ')){ closeList(); html += `<h2>${fmtInline(line.slice(3))}</h2>`; return; }
+    if(line.startsWith('# ')){ closeList(); html += `<h1>${fmtInline(line.slice(2))}</h1>`; return; }
+    if(line.startsWith('> ')){ closeList(); html += `<blockquote>${fmtInline(line.slice(2))}</blockquote>`; return; }
+    if(line.match(/^---+$/)){ closeList(); html += '<hr>'; return; }
+    if(line.match(/^- \[( |x)\] /)){ closeList();
+      const checked = line[3]==='x';
+      html += `<div class="checkbox-item"><input type="checkbox" ${checked?'checked':''} disabled> ${fmtInline(line.slice(6))}</div>`; return; }
+    if(line.startsWith('- ') || line.startsWith('• ')){ if(!inUl){ if(inOl){html+='</ol>';inOl=false;} html+='<ul>'; inUl=true; } html+=`<li>${fmtInline(line.slice(2))}</li>`; return; }
+    if(line.match(/^\d+\. /)){ if(!inOl){ if(inUl){html+='</ul>';inUl=false;} html+='<ol>'; inOl=true; } html+=`<li>${fmtInline(line.replace(/^\d+\. /,''))}</li>`; return; }
+    closeList();
+    if(line.trim()==='') html += '<p style="height:6px;margin:0;"></p>';
+    else html += `<p>${fmtInline(line)}</p>`;
   });
-  return blocks.length ? blocks : [{id:genBlockId(), type:'paragraph', text:''}];
+  closeList();
+  return html;
 }
 
-function blocksToText(blocks) {
-  return blocks.map(b => {
-    switch(b.type) {
-      case 'h1':        return '# ' + b.text;
-      case 'h2':        return '## ' + b.text;
-      case 'h3':        return '### ' + b.text;
-      case 'bullet':    return '- ' + b.text;
-      case 'numbered':  return '1. ' + b.text;
-      case 'quote':     return '> ' + b.text;
-      case 'hr':        return '---';
-      default:          return b.text;
-    }
-  }).join('\n');
+// Insert text at cursor position in textarea
+function insertAtCursor(taId, before, after) {
+  const ta = document.getElementById(taId);
+  if(!ta) return;
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  const sel   = ta.value.substring(start, end);
+  const replacement = before + (sel || '') + (after||'');
+  ta.value = ta.value.substring(0, start) + replacement + ta.value.substring(end);
+  const newPos = sel ? start + before.length + sel.length + (after||'').length : start + before.length;
+  ta.setSelectionRange(newPos, newPos);
+  ta.focus();
+  // trigger preview update
+  ta.dispatchEvent(new Event('input'));
 }
 
-function renderBlockEditor(containerId, blocks) {
-  const container = document.getElementById(containerId);
-  if(!container) return;
-  container.innerHTML = '';
-
-  let numberedIdx = 0;
-
-  blocks.forEach((block, i) => {
-    if(block.type === 'numbered') numberedIdx++;
-    else numberedIdx = 0;
-
-    const row = document.createElement('div');
-    row.className = 'block-row';
-    row.dataset.id = block.id;
-
-    // handle
-    const handle = document.createElement('div');
-    handle.className = 'block-handle';
-    handle.innerHTML = `
-      <button class="block-handle-btn" title="ブロックタイプを変更" onclick="showBlockTypeMenu('${block.id}',event)">⊞</button>
-      <button class="block-handle-btn" title="削除" onclick="deleteBlock('${block.id}')">✕</button>`;
-    row.appendChild(handle);
-
-    // bullet/number icon
-    if(block.type === 'bullet') {
-      const icon = document.createElement('div');
-      icon.className = 'block-bullet-icon';
-      icon.textContent = '•';
-      row.appendChild(icon);
-    } else if(block.type === 'numbered') {
-      const icon = document.createElement('div');
-      icon.className = 'block-bullet-icon';
-      icon.textContent = numberedIdx + '.';
-      row.appendChild(icon);
-    }
-
-    if(block.type === 'hr') {
-      const div = document.createElement('div');
-      div.className = 'block-divider block-hr-row';
-      row.appendChild(div);
-    } else {
-      const cfg = BLOCK_TYPES.find(t=>t.type===block.type) || BLOCK_TYPES[0];
-      const el = document.createElement('div');
-      el.className = 'block-content';
-      el.dataset.type = block.type;
-      el.dataset.id = block.id;
-      el.contentEditable = 'true';
-      el.dataset.placeholder = cfg.placeholder;
-      el.textContent = block.text;
-      el.spellcheck = false;
-
-      el.addEventListener('input', () => {
-        const b = _blocks.find(x=>x.id===block.id);
-        if(b) b.text = el.textContent;
-      });
-
-      el.addEventListener('keydown', e => handleBlockKey(e, block.id, containerId));
-      el.addEventListener('mouseup', () => showInlineToolbar(el));
-      el.addEventListener('keyup', () => showInlineToolbar(el));
-      el.addEventListener('focus', () => hideBlockTypeMenu());
-
-      row.appendChild(el);
-    }
-
-    container.appendChild(row);
-  });
-
-  // Add new block button at bottom
-  const addBtn = document.createElement('div');
-  addBtn.style.cssText = 'padding:6px 4px;color:var(--muted2);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;border-radius:6px;transition:color .1s;';
-  addBtn.innerHTML = '<span style="font-size:16px;line-height:1;">+</span> ブロックを追加';
-  addBtn.onmouseenter = () => addBtn.style.color = 'var(--muted)';
-  addBtn.onmouseleave = () => addBtn.style.color = 'var(--muted2)';
-  addBtn.onclick = () => { addBlock(null, 'paragraph', containerId); };
-  container.appendChild(addBtn);
-}
-
-function handleBlockKey(e, blockId, containerId) {
-  if(e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    addBlock(blockId, 'paragraph', containerId);
-  }
-  if(e.key === 'Backspace') {
-    const b = _blocks.find(x=>x.id===blockId);
-    if(b && b.text === '' && _blocks.length > 1) {
-      e.preventDefault();
-      deleteBlock(blockId, containerId, true);
-    }
-  }
-  // / to show type menu
-  if(e.key === '/' ) {
-    const b = _blocks.find(x=>x.id===blockId);
-    if(b && b.text === '') {
-      e.preventDefault();
-      const el = document.querySelector(`.block-content[data-id="${blockId}"]`);
-      if(el) showBlockTypeMenu(blockId, e, el);
-    }
-  }
-}
-
-function addBlock(afterId, type, containerId) {
-  const newBlock = {id:genBlockId(), type:type||'paragraph', text:''};
-  if(!afterId) {
-    _blocks.push(newBlock);
+function insertLinePrefix(taId, prefix) {
+  const ta = document.getElementById(taId);
+  if(!ta) return;
+  const start = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf('\n', start-1) + 1;
+  const lineEnd = ta.value.indexOf('\n', start);
+  const end = lineEnd === -1 ? ta.value.length : lineEnd;
+  const line = ta.value.substring(lineStart, end);
+  // toggle: if already has prefix, remove it
+  if(line.startsWith(prefix)) {
+    ta.value = ta.value.substring(0, lineStart) + line.slice(prefix.length) + ta.value.substring(end);
+    ta.setSelectionRange(start - prefix.length, start - prefix.length);
   } else {
-    const idx = _blocks.findIndex(b=>b.id===afterId);
-    _blocks.splice(idx+1, 0, newBlock);
+    ta.value = ta.value.substring(0, lineStart) + prefix + line + ta.value.substring(end);
+    ta.setSelectionRange(start + prefix.length, start + prefix.length);
   }
-  renderBlockEditor(containerId, _blocks);
-  setTimeout(() => {
-    const el = document.querySelector(`.block-content[data-id="${newBlock.id}"]`);
-    if(el) el.focus();
-  }, 20);
+  ta.focus();
+  ta.dispatchEvent(new Event('input'));
 }
 
-function deleteBlock(blockId, containerId, focusPrev) {
-  const cid = containerId || (_editingNoteKey ? `block-editor-${_editingNoteKey}` : null);
-  if(!cid) return;
-  const idx = _blocks.findIndex(b=>b.id===blockId);
-  if(idx === -1 || _blocks.length <= 1) return;
-  _blocks.splice(idx, 1);
-  renderBlockEditor(cid, _blocks);
-  if(focusPrev) {
-    const prevIdx = Math.max(0, idx-1);
-    setTimeout(() => {
-      const el = document.querySelector(`.block-content[data-id="${_blocks[prevIdx]?.id}"]`);
-      if(el){ el.focus(); const range=document.createRange(); range.selectNodeContents(el); range.collapse(false); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
-    }, 20);
+function updatePreview(taId, previewId) {
+  const ta = document.getElementById(taId);
+  const preview = document.getElementById(previewId);
+  if(!ta || !preview) return;
+  const html = renderNotionBody(ta.value);
+  preview.innerHTML = html || '<span style="color:var(--muted2);font-size:13px;">プレビューがここに表示されます</span>';
+}
+
+function buildNoteEditorHTML(noteKey, bodyValue) {
+  const taId = `ned-body-${noteKey}`;
+  const pvId = `ned-preview-${noteKey}`;
+  return `
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <!-- Toolbar -->
+      <div style="display:flex;gap:2px;padding:6px 8px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','# ','')" title="見出し1">H1</button>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','## ','')" title="見出し2">H2</button>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','### ','')" title="見出し3">H3</button>
+        <div style="width:1px;background:var(--border2);margin:2px 4px;"></div>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','**','**')" title="太字"><b>B</b></button>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','*','*')" title="斜体"><i>I</i></button>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','&#96;','&#96;')" title="コード" style="font-family:monospace;">⌥</button>
+        <div style="width:1px;background:var(--border2);margin:2px 4px;"></div>
+        <button type="button" class="fmt-btn" onclick="insertLinePrefix('${taId}','- ')" title="箇条書き">• —</button>
+        <button type="button" class="fmt-btn" onclick="insertLinePrefix('${taId}','1. ')" title="番号リスト">1.</button>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','> ','')" title="引用">❝</button>
+        <div style="width:1px;background:var(--border2);margin:2px 4px;"></div>
+        <button type="button" class="fmt-btn" onclick="insertAtCursor('${taId}','\\n---\\n','')" title="区切り線">—</button>
+        <div style="flex:1;"></div>
+        <button type="button" class="fmt-btn active-tab" id="tab-edit-${noteKey}" onclick="switchEditorTab('${noteKey}','edit')" style="font-size:11px;">編集</button>
+        <button type="button" class="fmt-btn" id="tab-preview-${noteKey}" onclick="switchEditorTab('${noteKey}','preview')" style="font-size:11px;">プレビュー</button>
+      </div>
+      <!-- Edit area -->
+      <div id="pane-edit-${noteKey}" style="display:block;">
+        <textarea id="${taId}" class="note-edit-area" oninput="updatePreview('${taId}','${pvId}')"
+          placeholder="# 見出し&#10;**太字** / *斜体* / \`コード\`&#10;- 箇条書き&#10;1. 番号リスト&#10;&gt; 引用&#10;--- 区切り線&#10;&#10;URLを貼ると自動リンクになります"
+          style="border:none;border-radius:0;min-height:200px;">${(bodyValue||'').replace(/</g,'&lt;')}</textarea>
+      </div>
+      <!-- Preview area -->
+      <div id="pane-preview-${noteKey}" style="display:none;padding:14px 16px;min-height:120px;">
+        <div class="notion-body" id="${pvId}"></div>
+      </div>
+    </div>
+    <div class="note-format-hint">H1〜H3: 見出し &nbsp;**太字** &nbsp;*斜体* &nbsp;\`コード\` &nbsp;- リスト &nbsp;&gt; 引用 &nbsp;--- 区切り</div>`;
+}
+
+function switchEditorTab(noteKey, tab) {
+  const taId = `ned-body-${noteKey}`;
+  const pvId = `ned-preview-${noteKey}`;
+  const editPane = document.getElementById(`pane-edit-${noteKey}`);
+  const previewPane = document.getElementById(`pane-preview-${noteKey}`);
+  const editBtn = document.getElementById(`tab-edit-${noteKey}`);
+  const previewBtn = document.getElementById(`tab-preview-${noteKey}`);
+  if(!editPane || !previewPane) return;
+  if(tab === 'edit') {
+    editPane.style.display = 'block';
+    previewPane.style.display = 'none';
+    if(editBtn) { editBtn.style.background='var(--accent-bg)'; editBtn.style.color='var(--accent)'; }
+    if(previewBtn) { previewBtn.style.background=''; previewBtn.style.color=''; }
+  } else {
+    editPane.style.display = 'none';
+    previewPane.style.display = 'block';
+    updatePreview(taId, pvId);
+    if(previewBtn) { previewBtn.style.background='var(--accent-bg)'; previewBtn.style.color='var(--accent)'; }
+    if(editBtn) { editBtn.style.background=''; editBtn.style.color=''; }
   }
 }
 
-function showBlockTypeMenu(blockId, e, targetEl) {
-  hideBlockTypeMenu();
-  const rect = (targetEl || e.currentTarget).getBoundingClientRect();
-  const menu = document.createElement('div');
-  menu.className = 'block-type-menu';
-  menu.id = 'block-type-menu';
-  menu.style.top = (rect.bottom + 4) + 'px';
-  menu.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
-
-  BLOCK_TYPES.forEach(t => {
-    const item = document.createElement('button');
-    item.className = 'block-type-item';
-    item.innerHTML = `<span class="block-type-icon">${t.icon}</span><span>${t.label}</span>`;
-    item.onclick = () => { changeBlockType(blockId, t.type); hideBlockTypeMenu(); };
-    menu.appendChild(item);
-  });
-
-  document.body.appendChild(menu);
-  _blockTypeMenuEl = menu;
-
-  setTimeout(() => {
-    document.addEventListener('click', hideBlockTypeMenu, {once:true});
-  }, 10);
-}
-
-function hideBlockTypeMenu() {
-  const el = document.getElementById('block-type-menu');
-  if(el) el.remove();
-  _blockTypeMenuEl = null;
-}
-
-function changeBlockType(blockId, newType) {
-  const b = _blocks.find(x=>x.id===blockId);
-  if(!b) return;
-  b.type = newType;
-  if(newType === 'hr') b.text = '';
-  const cid = _editingNoteKey ? `block-editor-${_editingNoteKey}` : null;
-  if(cid) renderBlockEditor(cid, _blocks);
-}
-
-function showInlineToolbar(el) {
-  const sel = window.getSelection();
-  if(!sel || sel.isCollapsed || !sel.toString().trim()) {
-    hideInlineToolbar(); return;
-  }
-  const range = sel.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
-
-  let toolbar = document.getElementById('block-inline-toolbar');
-  if(!toolbar) {
-    toolbar = document.createElement('div');
-    toolbar.className = 'block-toolbar';
-    toolbar.id = 'block-inline-toolbar';
-    toolbar.innerHTML = `
-      <button onclick="execFmt('bold')" title="太字"><b>B</b></button>
-      <button onclick="execFmt('italic')" title="斜体"><i>I</i></button>
-      <button onclick="execFmt('underline')" title="下線"><u>U</u></button>`;
-    document.body.appendChild(toolbar);
-  }
-  toolbar.style.top = (rect.top - 44 + window.scrollY) + 'px';
-  toolbar.style.left = (rect.left + rect.width/2 - 60) + 'px';
-  toolbar.style.display = 'flex';
-}
-
-function hideInlineToolbar() {
-  const t = document.getElementById('block-inline-toolbar');
-  if(t) t.style.display = 'none';
-}
-
-function execFmt(cmd) {
-  document.execCommand(cmd);
-  hideInlineToolbar();
-}
-
-document.addEventListener('selectionchange', () => {
-  const sel = window.getSelection();
-  if(!sel || sel.isCollapsed) hideInlineToolbar();
-});
-
-// ─── Updated Note functions ───
 function openNoteDetail(key) {
   _noteEditMode = false;
-  _editingNoteKey = null;
-  _blocks = [];
   renderNoteDetailModal(key);
   openOv('ov-note-detail');
 }
@@ -2476,37 +2361,22 @@ function renderNoteDetailModal(key) {
   };
 
   if(_noteEditMode) {
-    // Edit mode: block editor
-    _editingNoteKey = key;
-    if(!_blocks.length) _blocks = blocksFromText(n.body||'');
-
     document.getElementById('note-detail-body').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="flex:1;margin-right:12px;">
-          <input class="fi" id="ned-title" value="${(n.title||'').replace(/"/g,'&quot;')}" style="font-size:16px;font-weight:600;border:none;background:transparent;padding:4px 0;" placeholder="タイトル">
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;_blocks=[];renderNoteDetailModal('${key}')">キャンセル</button>
+        <h3 style="font-size:14px;font-weight:500;">スレッドを編集</h3>
+        <div style="display:flex;gap:5px;">
+          <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;renderNoteDetailModal('${key}')">キャンセル</button>
           <button class="btn btn-primary btn-sm" onclick="updateNote('${key}')">保存</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-        <div><label class="fl">日付</label><input type="date" class="fi" id="ned-date" value="${n.noteDate||''}" style="width:auto;"></div>
-        <div style="flex:1;min-width:140px;"><label class="fl">参加者</label><input class="fi" id="ned-members" value="${(n.members||'').replace(/"/g,'&quot;')}" placeholder="田中、鈴木…"></div>
+      <div class="fg"><label class="fl">タイトル</label><input class="fi" id="ned-title" value="${(n.title||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;"><label class="fl">日付</label><input type="date" class="fi" id="ned-date" value="${n.noteDate||''}"></div>
+        <div style="flex:2;min-width:140px;"><label class="fl">参加者</label><input class="fi" id="ned-members" value="${(n.members||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" placeholder="田中、鈴木…"></div>
       </div>
-      <div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface);margin-bottom:16px;min-height:220px;">
-        <div id="block-editor-${key}" class="block-editor"></div>
-      </div>
-      <div style="font-size:10px;color:var(--muted2);margin-bottom:14px;">Enter で新しいブロック · ⊞ でタイプ変更 · 文字選択でツールバー表示 · / でコマンドメニュー</div>`;
-
-    renderBlockEditor(`block-editor-${key}`, _blocks);
-    setTimeout(() => {
-      const first = document.querySelector(`#block-editor-${key} .block-content`);
-      if(first) first.focus();
-    }, 50);
-
+      <label class="fl">内容</label>
+      ${buildNoteEditorHTML(key, n.body||'')}`;
   } else {
-    // View mode
     document.getElementById('note-detail-body').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
         <div style="flex:1;min-width:0;">
@@ -2521,11 +2391,13 @@ function renderNoteDetailModal(key) {
           </div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
-          ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="_noteEditMode=true;_blocks=[];renderNoteDetailModal('${key}')">編集</button>`:''}
+          ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="_noteEditMode=true;renderNoteDetailModal('${key}')">編集</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="deleteNote('${key}')">削除</button>
         </div>
       </div>
-      ${n.body?`<div class="notion-body" style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">${renderNotionBody(n.body)}</div>`:'<div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;color:var(--muted2);font-size:13px;">内容がありません。「編集」から追加してください。</div>'}
+      ${n.body
+        ? `<div class="notion-body" style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">${renderNotionBody(n.body)}</div>`
+        : `<div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;color:var(--muted2);font-size:13px;">内容がありません。「編集」から追加してください。</div>`}
       <div style="border-top:1px solid var(--border);padding-top:14px;">
         <div style="font-size:12px;font-weight:500;margin-bottom:12px;font-family:var(--font-s);">コメント (${posts.length}件)</div>
         <div id="note-posts-thread-${key}" style="max-height:280px;overflow-y:auto;margin-bottom:14px;">
@@ -2545,17 +2417,10 @@ function updateNote(key) {
   const title    = document.getElementById('ned-title')?.value.trim();
   const noteDate = document.getElementById('ned-date')?.value;
   const members  = document.getElementById('ned-members')?.value.trim();
+  const body     = document.getElementById(`ned-body-${key}`)?.value || '';
   if(!title){ toast('タイトルを入力してください'); return; }
-  // Sync current block texts from DOM
-  _blocks.forEach(b => {
-    const el = document.querySelector(`.block-content[data-id="${b.id}"]`);
-    if(el) b.text = el.textContent;
-  });
-  const body = blocksToText(_blocks);
   fbUpdate(`notes/${key}`, {title, body, noteDate, members, updatedAt:Date.now()});
   _noteEditMode = false;
-  _blocks = [];
-  _editingNoteKey = null;
   toast('保存しました！');
   setTimeout(()=>renderNoteDetailModal(key), 300);
 }
@@ -2631,7 +2496,7 @@ function deleteNote(key) {
   if(!confirm('このスレッドを削除しますか？投稿もすべて削除されます。')) return;
   fbRemove(`notes/${key}`);
   fbRemove(`notePosts/${key}`);
-  _blocks = []; _editingNoteKey = null; _noteEditMode = false;
+  _noteEditMode = false;
   toast('削除しました');
   closeOv('ov-note-detail');
 }
