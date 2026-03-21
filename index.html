@@ -3881,6 +3881,15 @@ function selectResetDay(day, el) {
   document.getElementById('wg-reset-preview').textContent = '毎週' + DAY_NAMES[day] + '曜日にリセットされます';
 }
 
+function resetWeeklyModal() {
+  const ttl = document.getElementById('wg-modal-ttl');
+  if(ttl) ttl.textContent = '週間目標を追加';
+  const saveBtn = document.querySelector('#ov-weekly .btn-primary');
+  if(saveBtn) { saveBtn.textContent = '追加'; saveBtn.onclick = saveWeeklyGoal; }
+  const delBtn = document.getElementById('wg-delete-btn');
+  if(delBtn) delBtn.remove();
+}
+
 function openWeeklyModal() {
   resetWeeklyModal();
   document.getElementById('wg-name').value='';
