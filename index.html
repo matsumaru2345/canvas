@@ -107,7 +107,17 @@ window.logoutApp   = () => signOut(auth);
 function initListeners() {
   const { onValue, ref } = window._fb;
   onValue(ref(db,'events'),  snap => { window._data.events  = []; snap.forEach(c => window._data.events.push({_key:c.key,...c.val()}));  renderAll(); });
-  onValue(ref(db,'tasks'),   snap => { window._data.tasks   = []; snap.forEach(c => window._data.tasks.push({_key:c.key,...c.val()}));   renderAll(); });
+  onValue(ref(db,'tasks'), snap => {
+    const newTasks = [];
+    snap.forEach(c => {
+      const val = c.val();
+      if(val && val.name) {
+        newTasks.push({_key: c.key, ...val});
+      }
+    });
+    window._data.tasks = newTasks;
+    renderAll();
+  });
   onValue(ref(db,'users'), snap => {
     window._data.users = {};
     snap.forEach(c => {
@@ -995,7 +1005,7 @@ textarea.fi{resize:vertical;min-height:70px;}
     <!-- Tasks -->
     <div id="page-tasks" class="page">
       <div class="topbar">
-        <span class="topbar-title">タスク</span>
+        <span class="topbar-title" id="tasks-topbar-title">タスク</span>
         <div class="topbar-actions">
           <select class="fi" id="tk-ev-filter" style="width:160px;padding:6px 10px;font-size:12px;" onchange="renderTasks()">
             <option value="all">全イベント</option>
@@ -1753,9 +1763,9 @@ function renderTasks(){
   syncTkEvFilter();
   const evF=document.getElementById('tk-ev-filter')?.value||'all';
   const myId=window._me?.uid;
-  // Debug: show total task count in topbar
-  const ttl = document.querySelector('#page-tasks .topbar-title');
-  if(ttl) ttl.textContent = `タスク（DB: ${window._data.tasks.filter(t=>!t.isTemplate).length}件）`;
+  const allCount = window._data.tasks.filter(t=>!t.isTemplate).length;
+  const ttl = document.getElementById('tasks-topbar-title');
+  if(ttl) ttl.textContent = allCount > 0 ? `タスク (${allCount}件)` : 'タスク';
   document.getElementById('task-board').innerHTML=STATUS_LIST.map(st=>{
     let tasks=window._data.tasks.filter(t=>t.status===st);
     if(evF!=='all') tasks=tasks.filter(t=>t.eventKey===evF);
