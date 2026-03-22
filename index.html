@@ -3611,7 +3611,12 @@ function renderSketchCurrentAssignment() {
   // Submission stats
   const subs = window._data.sketchSubmissions[current._key] || {};
   const members = Object.values(window._data.users).filter(u => u.status === 'approved' || u.status === 'admin');
-  const submitted = Object.values(subs).filter(s => s.status === '提出済み').length;
+  const participating = members.filter(m => {
+    const sub = subs[m._key||m.uid];
+    return sub?.participating !== false;
+  });
+  const submitted = Object.values(subs).filter(s => s.status === '提出済み' && s.participating !== false).length;
+  const participatingCount = participating.length;
 
   el.innerHTML = `
     <div style="background:var(--surface);border:2px solid var(--accent-light);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-md);">
@@ -3620,7 +3625,7 @@ function renderSketchCurrentAssignment() {
           <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${current.title}</div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);">
             ${current.due ? `<span style="color:${dueColor};font-weight:600;">⏰ ${current.due} (${dueLabel})</span>` : ''}
-            <span>提出済み: <strong style="color:var(--green);">${submitted}</strong> / ${members.length}名</span>
+            <span>提出済み: <strong style="color:var(--green);">${submitted}</strong> / ${participatingCount}名参加中</span>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -3637,7 +3642,7 @@ function renderSketchCurrentAssignment() {
           <span>${members.length ? Math.round(submitted/members.length*100) : 0}%</span>
         </div>
         <div style="height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;">
-          <div style="height:100%;background:linear-gradient(90deg,var(--green),#22c55e);border-radius:4px;width:${members.length ? Math.round(submitted/members.length*100) : 0}%;transition:width .5s;"></div>
+          <div style="height:100%;background:linear-gradient(90deg,var(--green),#22c55e);border-radius:4px;width:${participatingCount ? Math.round(submitted/participatingCount*100) : 0}%;transition:width .5s;"></div>
         </div>
       </div>
     </div>`;
@@ -3663,41 +3668,57 @@ function renderSketchMemberCards() {
 
   const subs = window._data.sketchSubmissions[current._key] || {};
 
-  // Sort: self first, then submitted, then others
+  // Sort: self first, then participating+submitted, then not participating
   members.sort((a,b) => {
     if(a._key === myId) return -1;
     if(b._key === myId) return 1;
-    const sa = subs[a._key]?.status || '未着手';
-    const sb = subs[b._key]?.status || '未着手';
-    if(sa === '提出済み' && sb !== '提出済み') return -1;
-    if(sb === '提出済み' && sa !== '提出済み') return 1;
+    const sa = subs[a._key];
+    const sb = subs[b._key];
+    const aOut = sa?.participating === false;
+    const bOut = sb?.participating === false;
+    if(aOut && !bOut) return 1;
+    if(bOut && !aOut) return -1;
+    if(sa?.status === '提出済み' && sb?.status !== '提出済み') return -1;
+    if(sb?.status === '提出済み' && sa?.status !== '提出済み') return 1;
     return 0;
   });
 
   el.innerHTML = members.map(u => {
     const sub = subs[u._key] || {};
-    const status = sub.status || '未着手';
     const isMe = u._key === myId;
-    const statusColor = status === '提出済み' ? 'var(--green)' : status === '取り組み中' ? 'var(--amber)' : 'var(--muted)';
-    const statusIcon  = status === '提出済み' ? '✅' : status === '取り組み中' ? '🖊' : '⬜';
-    const avHTML = u.photo
-      ? `<img src="${u.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${isMe?'var(--accent)':'var(--border)'}">`
-      : `<div style="width:36px;height:36px;border-radius:50%;background:${avBg(avColor(u.displayName||u.name||''))};color:${avColor(u.displayName||u.name||'')};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid ${isMe?'var(--accent)':'var(--border)'};">${initials(u.displayName||u.name||'?')}</div>`;
+    const notParticipating = sub.participating === false;
+    const status = notParticipating ? '不参加' : (sub.status || '未着手');
+    const statusColor = notParticipating ? 'var(--muted2)' : status === '提出済み' ? 'var(--green)' : status === '取り組み中' ? 'var(--amber)' : 'var(--muted)';
+    const statusIcon  = notParticipating ? '⏭' : status === '提出済み' ? '✅' : status === '取り組み中' ? '🖊' : '⬜';
 
-    return `<div style="background:var(--surface);border:2px solid ${isMe?'var(--accent)':status==='提出済み'?'rgba(34,197,94,.3)':'var(--border)'};border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);transition:all .2s;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+    const avHTML = u.photo
+      ? `<img src="${u.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${notParticipating?'var(--border)':isMe?'var(--accent)':'var(--border)'};opacity:${notParticipating?.5:1};">`
+      : `<div style="width:36px;height:36px;border-radius:50%;background:${avBg(avColor(u.displayName||u.name||''))};color:${avColor(u.displayName||u.name||'')};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid ${notParticipating?'var(--border)':isMe?'var(--accent)':'var(--border)'};opacity:${notParticipating?.5:1};">${initials(u.displayName||u.name||'?')}</div>`;
+
+    return `<div style="background:${notParticipating?'var(--surface2)':'var(--surface)'};border:2px solid ${notParticipating?'var(--border)':isMe?'var(--accent)':status==='提出済み'?'rgba(34,197,94,.3)':'var(--border)'};border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);transition:all .2s;opacity:${notParticipating?.6:1};">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${notParticipating?'0':'10px'};">
         ${avHTML}
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;">${u.displayName||u.name||'—'}${isMe?' (自分)':''}</div>
           <div style="font-size:12px;color:${statusColor};font-weight:600;">${statusIcon} ${status}</div>
         </div>
-        ${isMe ? `<button class="btn btn-primary btn-sm" onclick="openSketchSubmitModal('${current._key}')">更新</button>` : ''}
+        ${isMe && !notParticipating ? `<button class="btn btn-primary btn-sm" onclick="openSketchSubmitModal('${current._key}')">更新</button>` : ''}
+        ${isMe && notParticipating ? `<button class="btn btn-ghost btn-sm" onclick="toggleSketchParticipation('${current._key}',true)" style="font-size:11px;">参加する</button>` : ''}
+        ${isMe && !notParticipating ? `<button onclick="toggleSketchParticipation('${current._key}',false)" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:11px;padding:4px 6px;border-radius:6px;font-family:var(--font-j);" title="今回はスキップ">スキップ</button>` : ''}
       </div>
-      ${sub.comment ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;background:var(--surface2);padding:8px 10px;border-radius:8px;margin-bottom:8px;">"${sub.comment}"</div>` : ''}
-      ${sub.workLink ? `<a href="${sub.workLink}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);text-decoration:none;background:var(--accent-bg);padding:4px 10px;border-radius:20px;font-weight:600;">🎨 作品を見る</a>` : ''}
-      ${isMe && !sub.comment && !sub.workLink ? `<div style="font-size:12px;color:var(--muted2);text-align:center;padding:4px 0;">「更新」ボタンで提出状況と感想を入力できます</div>` : ''}
+      ${!notParticipating && sub.comment ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;background:var(--surface2);padding:8px 10px;border-radius:8px;margin-bottom:8px;">"${sub.comment}"</div>` : ''}
+      ${!notParticipating && sub.workLink ? `<a href="${sub.workLink}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);text-decoration:none;background:var(--accent-bg);padding:4px 10px;border-radius:20px;font-weight:600;">🎨 作品を見る</a>` : ''}
+      ${isMe && !notParticipating && !sub.comment && !sub.workLink ? `<div style="font-size:11px;color:var(--muted2);text-align:center;padding:4px 0;">「更新」で進捗・感想・作品リンクを入力</div>` : ''}
     </div>`;
   }).join('');
+}
+
+function toggleSketchParticipation(assignmentKey, participating) {
+  const myId = window._me?.uid;
+  if(!myId) return;
+  fbUpdate(`sketchSubmissions/${assignmentKey}/${myId}`, { participating, updatedAt: Date.now() });
+  if(participating) toast('課題に参加します！');
+  else toast('今回の課題をスキップしました');
 }
 
 // ── Sketch Assignment Modal ──
