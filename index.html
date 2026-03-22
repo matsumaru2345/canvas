@@ -1005,8 +1005,8 @@ textarea.fi{resize:vertical;min-height:70px;}
       </div>
       <div style="padding:26px">
         <div class="view-toggle">
-          <button class="view-btn active" onclick="setTaskView('mine',this)">自分のタスク</button>
-          <button class="view-btn" onclick="setTaskView('all',this)">全員のタスク</button>
+          <button class="view-btn" onclick="setTaskView('mine',this)">自分のタスク</button>
+          <button class="view-btn active" onclick="setTaskView('all',this)">全員のタスク</button>
         </div>
         <div class="task-board" id="task-board"></div>
       </div>
@@ -1565,7 +1565,7 @@ const EMOJIS = ['👍','🔥','💪','✨','🎉','😊','🤔','🙏'];
 
 let _activePage = 'dash';
 let _evFilter   = 'all';
-let _taskView   = 'mine';
+let _taskView   = 'all';
 let _dragKey    = null;
 let _editEvKey  = null;
 let _notifs     = [];
@@ -1753,6 +1753,9 @@ function renderTasks(){
   syncTkEvFilter();
   const evF=document.getElementById('tk-ev-filter')?.value||'all';
   const myId=window._me?.uid;
+  // Debug: show total task count in topbar
+  const ttl = document.querySelector('#page-tasks .topbar-title');
+  if(ttl) ttl.textContent = `タスク（DB: ${window._data.tasks.filter(t=>!t.isTemplate).length}件）`;
   document.getElementById('task-board').innerHTML=STATUS_LIST.map(st=>{
     let tasks=window._data.tasks.filter(t=>t.status===st);
     if(evF!=='all') tasks=tasks.filter(t=>t.eventKey===evF);
@@ -2266,28 +2269,36 @@ function openTkModal(){
 function saveTask(){
   const name=document.getElementById('tk-name').value.trim();
   if(!name){ toast('タスク名を入力してください'); return; }
-  const evKey=document.getElementById('tk-ev').value;
-  const due=document.getElementById('tk-due').value;
-  const pri=document.getElementById('tk-pri').value;
-  const note=document.getElementById('tk-note').value;
+  const evKey=document.getElementById('tk-ev').value || '';
+  const due=document.getElementById('tk-due').value || '';
+  const pri=document.getElementById('tk-pri').value || 'mid';
+  const note=document.getElementById('tk-note').value || '';
   const isTemplate=document.getElementById('tk-is-template')?.checked||false;
 
+  if(!window._fb){ toast('接続中です。少し待ってから再試行してください'); return; }
+
   if(isTemplate){
-    // Save as template (no assignee needed)
-    fbPush('tasks',{name,eventKey:evKey,assigneeUid:'',due,priority:pri,status:'未着手',note,isTemplate:true,createdBy:window._me?.uid||''});
-    toast(`テンプレ「${name}」を登録しました`);
-    closeOv('ov-task');
+    const ref = window._fb.ref(window._fb.db, 'tasks');
+    window._fb.push(ref, {name,eventKey:evKey,assigneeUid:'',due,priority:pri,status:'未着手',note,isTemplate:true,createdBy:window._me?.uid||''})
+      .then(()=>{ toast(`テンプレ「${name}」を登録しました`); closeOv('ov-task'); })
+      .catch(e=>{ console.error('Task save error:', e); toast('保存に失敗しました: ' + e.message); });
     return;
   }
 
   const checked=[...document.querySelectorAll('#tk-assignees input:checked')].map(i=>i.value);
   if(!checked.length){ toast('担当者を選んでください（またはテンプレとして登録）'); return; }
-  checked.forEach(uid=>{
-    fbPush('tasks',{name,eventKey:evKey,assigneeUid:uid,due,priority:pri,status:'未着手',note,isTemplate:false,createdBy:window._me?.uid||''});
-  });
-  toast(`${checked.length}件のタスクを追加しました`);
-  pushNotif('タスク追加',`「${name}」が${checked.length}名に割り当てられました`);
-  closeOv('ov-task');
+
+  const ref = window._fb.ref(window._fb.db, 'tasks');
+  const promises = checked.map(uid =>
+    window._fb.push(ref, {name,eventKey:evKey,assigneeUid:uid,due,priority:pri,status:'未着手',note,isTemplate:false,createdBy:window._me?.uid||''})
+  );
+  Promise.all(promises)
+    .then(()=>{
+      toast(`${checked.length}件のタスクを追加しました`);
+      pushNotif('タスク追加',`「${name}」が${checked.length}名に割り当てられました`);
+      closeOv('ov-task');
+    })
+    .catch(e=>{ console.error('Task save error:', e); toast('保存に失敗しました: ' + e.message); });
 }
 
 // ─── Event detail ───
