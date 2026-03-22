@@ -106,48 +106,33 @@ window.logoutApp   = () => signOut(auth);
 
 function initListeners() {
   const { onValue, ref } = window._fb;
-  onValue(ref(db,'events'),  snap => { window._data.events  = []; snap.forEach(c => window._data.events.push({_key:c.key,...c.val()}));  renderAll(); });
-  onValue(ref(db,'tasks'), snap => {
-    const newTasks = [];
-    snap.forEach(c => {
-      const val = c.val();
-      if(val && val.name) {
-        newTasks.push({_key: c.key, ...val});
-      }
-    });
-    window._data.tasks = newTasks;
-    renderAll();
-  });
-  onValue(ref(db,'users'), snap => {
-    window._data.users = {};
-    snap.forEach(c => {
-      const u = c.val();
-      // Always ensure self is stored correctly
-      window._data.users[c.key] = u;
-    });
-    // Make sure current user is always in users map
-    const myId = window._me?.uid;
-    const me = window._me;
+  let _renderTimer = null;
+  const scheduleRender = () => {
+    if(_renderTimer) clearTimeout(_renderTimer);
+    _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 80);
+  };
+
+  onValue(ref(db,'events'),  snap => { window._data.events=[]; snap.forEach(c=>window._data.events.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'tasks'),   snap => { window._data.tasks=[]; snap.forEach(c=>{ const v=c.val(); if(v) window._data.tasks.push({_key:c.key,...v}); }); scheduleRender(); });
+  onValue(ref(db,'users'),   snap => {
+    window._data.users={};
+    snap.forEach(c=>{ window._data.users[c.key]=c.val(); });
+    const myId=window._me?.uid, me=window._me;
     if(myId && !window._data.users[myId] && me) {
-      window._data.users[myId] = {
-        uid: myId, name: me.displayName, displayName: me.displayName,
-        email: me.email, photo: me.photoURL||'',
-        status: window._myRole==='admin'?'admin':'approved',
-        role: window._myRole||'member'
-      };
+      window._data.users[myId]={uid:myId,name:me.displayName,displayName:me.displayName,email:me.email,photo:me.photoURL||'',status:window._myRole==='admin'?'admin':'approved',role:window._myRole||'member'};
     }
-    renderAll();
+    scheduleRender();
   });
-  onValue(ref(db,'comments'),snap => { window._data.comments= []; snap.forEach(c => window._data.comments.push({_key:c.key,...c.val()})); });
-  onValue(ref(db,'reactions'),snap => { window._data.reactions= {}; snap.forEach(c => window._data.reactions[c.key] = c.val()); });
-  onValue(ref(db,'invites'), snap => { window._data.invites  = {}; snap.forEach(c => window._data.invites[c.key] = c.val()); });
-  onValue(ref(db,'themeProposals'), snap => { window._data.themeProposals=[]; snap.forEach(c=>window._data.themeProposals.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'habitThemes'), snap => { window._data.habitThemes=[]; snap.forEach(c=>window._data.habitThemes.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'notes'), snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'notePosts'), snap => { window._data.notePosts={}; snap.forEach(c=>{ window._data.notePosts[c.key]={}; c.forEach(p=>window._data.notePosts[c.key][p.key]=p.val()); }); renderAll(); });
-  onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'weeklyLogs'),  snap => { window._data.weeklyLogs={}; snap.forEach(c=>window._data.weeklyLogs[c.key]=c.val()); renderAll(); });
+  onValue(ref(db,'comments'),    snap => { window._data.comments=[]; snap.forEach(c=>window._data.comments.push({_key:c.key,...c.val()})); });
+  onValue(ref(db,'reactions'),   snap => { window._data.reactions={}; snap.forEach(c=>window._data.reactions[c.key]=c.val()); });
+  onValue(ref(db,'invites'),     snap => { window._data.invites={}; snap.forEach(c=>window._data.invites[c.key]=c.val()); });
+  onValue(ref(db,'themeProposals'), snap => { window._data.themeProposals=[]; snap.forEach(c=>window._data.themeProposals.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'habitThemes'), snap => { window._data.habitThemes=[]; snap.forEach(c=>window._data.habitThemes.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'notes'),       snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'notePosts'),   snap => { window._data.notePosts={}; snap.forEach(c=>{ window._data.notePosts[c.key]={}; c.forEach(p=>window._data.notePosts[c.key][p.key]=p.val()); }); scheduleRender(); });
+  onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); scheduleRender(); });
+  onValue(ref(db,'weeklyLogs'),  snap => { window._data.weeklyLogs={}; snap.forEach(c=>window._data.weeklyLogs[c.key]=c.val()); scheduleRender(); });
   document.getElementById('sync-dot').classList.add('live');
 }
 </script>
@@ -1813,22 +1798,121 @@ function tkCard(t){
   </div>`;
 }
 
+// ─── EDIT TASK ───
+function openEditTaskModal(key) {
+  const t = window._data.tasks.find(x=>x._key===key);
+  if(!t) return;
+
+  document.getElementById('tk-name').value = t.name||'';
+  document.getElementById('tk-note').value = t.note||'';
+  document.getElementById('tk-due').value  = t.due||'';
+  document.getElementById('tk-pri').value  = t.priority||'mid';
+
+  const tkEv = document.getElementById('tk-ev');
+  tkEv.innerHTML = window._data.events.map(e=>`<option value="${e._key}"${e._key===t.eventKey?' selected':''}>${e.name}</option>`).join('') || '<option>イベントなし</option>';
+
+  const myId = window._me?.uid;
+  const me   = window._me;
+  const usersMap = {...window._data.users};
+  if(myId && !usersMap[myId]) {
+    usersMap[myId] = {uid:myId,name:me?.displayName||'あなた',photo:me?.photoURL||'',status:window._myRole==='admin'?'admin':'approved',role:window._myRole||'member'};
+  }
+  const allUids = [...new Set(Object.keys(usersMap))].filter(uid=>{
+    const u=usersMap[uid]; return u && u.status!=='blocked' && u.status!=='pending';
+  });
+  document.getElementById('tk-assignees').innerHTML = allUids.map(uid=>{
+    const u = usersMap[uid];
+    const name = u?.displayName||u?.name||uid;
+    const checked = uid === t.assigneeUid ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;font-size:12px;">
+      <input type="checkbox" value="${uid}" ${checked} style="accent-color:var(--accent);">
+      ${u?.photo?`<img src="${u.photo}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;">`:''}<span>${name}</span>
+    </label>`;
+  }).join('');
+
+  const tmpl = document.getElementById('tk-is-template');
+  if(tmpl) tmpl.checked = t.isTemplate||false;
+
+  // Change modal to edit mode
+  const ttl = document.querySelector('#ov-task .modal-title');
+  if(ttl) ttl.textContent = 'タスクを編集';
+  const addBtn = document.querySelector('#ov-task .btn-primary');
+  if(addBtn) { addBtn.textContent = '更新'; addBtn.onclick = () => updateTask(key); }
+
+  closeOv('ov-detail');
+  openOv('ov-task');
+}
+
+function updateTask(key) {
+  const name = document.getElementById('tk-name').value.trim();
+  if(!name){ toast('タスク名を入力してください'); return; }
+  const evKey = document.getElementById('tk-ev').value||'';
+  const due   = document.getElementById('tk-due').value||'';
+  const pri   = document.getElementById('tk-pri').value||'mid';
+  const note  = document.getElementById('tk-note').value||'';
+  const checked = [...document.querySelectorAll('#tk-assignees input:checked')].map(i=>i.value);
+  const assigneeUid = checked[0] || window._me?.uid || '';
+
+  fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid, due, priority:pri, note});
+  toast('タスクを更新しました');
+
+  // Reset modal back to add mode
+  const ttl = document.querySelector('#ov-task .modal-title');
+  if(ttl) ttl.textContent = 'タスクを追加';
+  const addBtn = document.querySelector('#ov-task .btn-primary');
+  if(addBtn) { addBtn.textContent = '追加'; addBtn.onclick = saveTask; }
+  closeOv('ov-task');
+}
+
 // ─── DUPLICATE TASK ───
 function duplicateTask(key){
   const t=window._data.tasks.find(x=>x._key===key);
   if(!t) return;
-  const copy={
-    name: t.name + ' （コピー）',
-    eventKey: t.eventKey,
-    assigneeUid: t.assigneeUid,
-    due: t.due||'',
-    priority: t.priority||'mid',
-    status: '未着手',
-    note: t.note||'',
-    createdBy: window._me?.uid||''
-  };
-  fbPush('tasks', copy);
-  toast('タスクを複製しました');
+  // Open task modal pre-filled with copied data
+  ['tk-name','tk-note','tk-due'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tk-name').value = t.name + ' （コピー）';
+  document.getElementById('tk-note').value = t.note||'';
+  document.getElementById('tk-due').value  = t.due||'';
+  document.getElementById('tk-pri').value  = t.priority||'mid';
+
+  // Set event select
+  const tkEv = document.getElementById('tk-ev');
+  tkEv.innerHTML = window._data.events.map(e=>`<option value="${e._key}"${e._key===t.eventKey?' selected':''}>${e.name}</option>`).join('') || '<option>イベントなし</option>';
+
+  // Build assignee list
+  const myId = window._me?.uid;
+  const me   = window._me;
+  const usersMap = {...window._data.users};
+  if(myId && !usersMap[myId]) {
+    usersMap[myId] = {
+      uid:myId, name:me?.displayName||'あなた', photo:me?.photoURL||'',
+      status:window._myRole==='admin'?'admin':'approved', role:window._myRole||'member'
+    };
+  }
+  const allUids = [...new Set(Object.keys(usersMap))].filter(uid=>{
+    const u=usersMap[uid]; return u && u.status!=='blocked' && u.status!=='pending';
+  });
+  document.getElementById('tk-assignees').innerHTML = allUids.map(uid=>{
+    const u    = usersMap[uid];
+    const name = u?.displayName||u?.name||uid;
+    // Pre-check the original assignee
+    const checked = uid === t.assigneeUid ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;font-size:12px;transition:all .12s;">
+      <input type="checkbox" value="${uid}" ${checked} style="accent-color:var(--accent);">
+      ${u?.photo?`<img src="${u.photo}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;">`:''}<span>${name}</span>
+    </label>`;
+  }).join('');
+
+  // Reset template checkbox
+  const tmpl = document.getElementById('tk-is-template');
+  if(tmpl) tmpl.checked = false;
+
+  // Change modal title to show it's a copy
+  const ttl = document.querySelector('#ov-task .modal-title');
+  if(ttl) ttl.textContent = 'タスクを複製（内容を編集できます）';
+
+  closeOv('ov-detail');
+  openOv('ov-task');
 }
 
 function dropTask(e,status){
@@ -2424,10 +2508,8 @@ function openTkDetail(key){
     <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
       <h3 style="font-size:15px;font-weight:500;">${t.name}</h3>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm" title="複製" onclick="duplicateTask('${key}');closeOv('ov-detail')">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M2 11V3a2 2 0 012-2h8"/></svg>
-          複製
-        </button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditTaskModal('${key}')">編集</button>
+        <button class="btn btn-ghost btn-sm" title="複製" onclick="duplicateTask('${key}')">複製</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTask('${key}')">削除</button>
       </div>
     </div>
