@@ -1379,10 +1379,18 @@ textarea.fi{resize:vertical;min-height:70px;}
       <input type="hidden" id="wg-color" value="#1d4ed8">
     </div>
     <div class="fg">
-      <label class="fl">開始日（7日ごとに自動リセット）</label>
-      <input type="date" class="fi" id="wg-start-date">
-      <div style="font-size:11px;color:var(--muted);margin-top:5px;" id="wg-reset-preview">開始日から7日ごとにリセットされます</div>
-      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;" onclick="setTodayAsStart()">今日を開始日にする</button>
+      <label class="fl">リセット曜日</label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;">
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(1,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--accent-bg);color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font-j);">月</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(2,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">火</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(3,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">水</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(4,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">木</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(5,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">金</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(6,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">土</button>
+        <button type="button" class="reset-day-btn" onclick="selectResetDay(0,this)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font-j);">日</button>
+      </div>
+      <input type="hidden" id="wg-reset-day" value="1">
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="wg-reset-preview">毎週月曜日にリセットされます</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOv('ov-weekly')">キャンセル</button>
@@ -3951,7 +3959,7 @@ function saveWeeklyGoal() {
   const target   = parseInt(document.getElementById('wg-target').value) || 5;
   const emoji    = document.getElementById('wg-emoji').value.trim() || '🎨';
   const color    = document.getElementById('wg-color').value || '#1d4ed8';
-  const resetDay = parseInt(document.getElementById('wg-reset-day').value) ?? 1;
+  const resetDay = parseInt(document.getElementById('wg-reset-day')?.value || '1') || 1;
   const myId     = window._me?.uid;
   if(!myId) return;
   fbPush('weeklyGoals', {name, unit, target, emoji, color, resetDay, uid:myId, createdAt:Date.now()});
