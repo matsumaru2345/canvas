@@ -112,8 +112,26 @@ function initListeners() {
     _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 80);
   };
 
-  onValue(ref(db,'events'),  snap => { window._data.events=[]; snap.forEach(c=>window._data.events.push({_key:c.key,...c.val()})); scheduleRender(); });
-  onValue(ref(db,'tasks'),   snap => { window._data.tasks=[]; snap.forEach(c=>{ const v=c.val(); if(v) window._data.tasks.push({_key:c.key,...v}); }); scheduleRender(); });
+  onValue(ref(db,'events'), snap => {
+    window._data.events = [];
+    if(snap.exists()) {
+      snap.forEach(c => {
+        const v = c.val();
+        if(v && typeof v === 'object') window._data.events.push({_key:c.key,...v});
+      });
+    }
+    scheduleRender();
+  });
+  onValue(ref(db,'tasks'), snap => {
+    window._data.tasks = [];
+    if(snap.exists()) {
+      snap.forEach(c => {
+        const v = c.val();
+        if(v && typeof v === 'object' && v.name) window._data.tasks.push({_key:c.key,...v});
+      });
+    }
+    scheduleRender();
+  });
   onValue(ref(db,'users'),   snap => {
     window._data.users={};
     snap.forEach(c=>{ window._data.users[c.key]=c.val(); });
@@ -133,11 +151,7 @@ function initListeners() {
   onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'notes'),       snap => { window._data.notes=[]; snap.forEach(c=>window._data.notes.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'notePosts'),   snap => { window._data.notePosts={}; snap.forEach(c=>{ window._data.notePosts[c.key]={}; c.forEach(p=>window._data.notePosts[c.key][p.key]=p.val()); }); scheduleRender(); });
-  onValue(ref(db,'sketchAssignments'), snap => {
-    window._data.sketchAssignments = [];
-    snap.forEach(c => window._data.sketchAssignments.push({_key:c.key,...c.val()}));
-    renderAll();
-  });
+
   onValue(ref(db,'weeklyGoals'), snap => { window._data.weeklyGoals=[]; snap.forEach(c=>window._data.weeklyGoals.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'weeklyLogs'),  snap => { window._data.weeklyLogs={}; snap.forEach(c=>window._data.weeklyLogs[c.key]=c.val()); scheduleRender(); });
   document.getElementById('sync-dot').classList.add('live');
@@ -1768,7 +1782,9 @@ function renderDash(){
     ${s?`<div class="stat-sub">${s}</div>`:''}
   </div>`).join('');
 
-  document.getElementById('dash-events').innerHTML=d.events.slice(0,3).map(evCardHTML).join('')||empty('まだイベントがありません');
+  document.getElementById('dash-events').innerHTML=d.events.slice(0,3).map(e=>{
+    try{ return evCardHTML(e); }catch(err){ console.error('dashEv error',e._key,err); return ''; }
+  }).join('')||empty('まだイベントがありません');
 
   const open=myTasks.filter(t=>t.status!=='完了').slice(0,6);
   document.getElementById('dash-tasks').innerHTML=open.length
@@ -1792,7 +1808,7 @@ function renderDash(){
 function evCardHTML(e){
   const c=TYPES[e.type]||TYPES['その他'];
   const pr=progress(e._key);
-  const ms=e.members||[];
+  const ms=Array.isArray(e.members)?e.members:[];
   return `<div class="ev-card" onclick="openEvDetail('${e._key}')">
     <div class="ev-stripe" style="background:${c.stripe}"></div>
     <div class="ev-body">
@@ -1828,7 +1844,9 @@ function evCardHTML(e){
 
 function renderEvents(){
   const list=_evFilter==='all'?window._data.events:window._data.events.filter(e=>e.type===_evFilter);
-  document.getElementById('ev-list').innerHTML=list.map(evCardHTML).join('')||empty('イベントがありません');
+  document.getElementById('ev-list').innerHTML=list.map(e=>{
+    try{ return evCardHTML(e); }catch(err){ console.error('evCard error',e._key,err); return ''; }
+  }).join('')||empty('イベントがありません');
   syncTkEvFilter();
 }
 function filterEv(f,el){ _evFilter=f; document.querySelectorAll('.filter-bar .chip').forEach(c=>c.classList.remove('active')); el.classList.add('active'); renderEvents(); }
@@ -2404,7 +2422,7 @@ function saveEvent(){
     start:document.getElementById('ev-start').value,
     end:document.getElementById('ev-end').value,
     location:document.getElementById('ev-loc').value,
-    members:document.getElementById('ev-members').value.split(/[,、]/).map(s=>s.trim()).filter(Boolean),
+    members:document.getElementById('ev-members').value ? document.getElementById('ev-members').value.split(/[,、]/).map(s=>s.trim()).filter(Boolean) : [],
     url:document.getElementById('ev-url').value,
     organizer:document.getElementById('ev-organizer').value,
     fee:document.getElementById('ev-fee').value,
