@@ -1864,11 +1864,11 @@ function renderTasks(){
   syncTkEvFilter();
   const evF=document.getElementById('tk-ev-filter')?.value||'all';
   const myId=window._me?.uid;
-  const allCount = window._data.tasks.filter(t=>!t.isTemplate).length;
+  const allCount = window._data.tasks.length;
   const ttl = document.getElementById('tasks-topbar-title');
   if(ttl) ttl.textContent = allCount > 0 ? `タスク (${allCount}件)` : 'タスク';
   document.getElementById('task-board').innerHTML=STATUS_LIST.map(st=>{
-    let tasks=window._data.tasks.filter(t=>t.status===st);
+    let tasks=window._data.tasks.filter(t=>t.status===st&&!t.isTemplate);
     if(evF!=='all') tasks=tasks.filter(t=>t.eventKey===evF);
     if(_taskView==='mine') tasks=tasks.filter(t=>t.assigneeUid===myId);
     return `<div class="task-col" data-status="${st}"
@@ -1981,9 +1981,8 @@ function updateTask(key) {
   } else {
     // 複数人の場合：既存タスクを最初の人に更新 + 残りは新規作成
     fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid:checked[0], due, priority:pri, note, isTemplate:false});
-    const ref = window._fb.ref(window._fb.db, 'tasks');
     checked.slice(1).forEach(uid => {
-      window._fb.push(ref, {name, eventKey:evKey, assigneeUid:uid, due, priority:pri, status:'未着手', note, isTemplate:false, createdBy:window._me?.uid||''});
+      fbPush('tasks', {name, eventKey:evKey, assigneeUid:uid, due, priority:pri, status:'未着手', note, isTemplate:false, createdBy:window._me?.uid||''});
     });
     toast(`${checked.length}名にタスクを割り当てました`);
   }
