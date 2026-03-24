@@ -1966,11 +1966,27 @@ function updateTask(key) {
   const due   = document.getElementById('tk-due').value||'';
   const pri   = document.getElementById('tk-pri').value||'mid';
   const note  = document.getElementById('tk-note').value||'';
+  const isTemplate = document.getElementById('tk-is-template')?.checked||false;
   const checked = [...document.querySelectorAll('#tk-assignees input:checked')].map(i=>i.value);
-  const assigneeUid = checked[0] || window._me?.uid || '';
 
-  fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid, due, priority:pri, note});
-  toast('タスクを更新しました');
+  if(isTemplate) {
+    // テンプレの場合は単純に更新
+    fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid:'', due, priority:pri, note, isTemplate:true});
+    toast('テンプレを更新しました');
+  } else if(checked.length <= 1) {
+    // 1人の場合は既存タスクを更新
+    const assigneeUid = checked[0] || window._me?.uid || '';
+    fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid, due, priority:pri, note, isTemplate:false});
+    toast('タスクを更新しました');
+  } else {
+    // 複数人の場合：既存タスクを最初の人に更新 + 残りは新規作成
+    fbUpdate(`tasks/${key}`, {name, eventKey:evKey, assigneeUid:checked[0], due, priority:pri, note, isTemplate:false});
+    const ref = window._fb.ref(window._fb.db, 'tasks');
+    checked.slice(1).forEach(uid => {
+      window._fb.push(ref, {name, eventKey:evKey, assigneeUid:uid, due, priority:pri, status:'未着手', note, isTemplate:false, createdBy:window._me?.uid||''});
+    });
+    toast(`${checked.length}名にタスクを割り当てました`);
+  }
 
   // Reset modal back to add mode
   const ttl = document.querySelector('#ov-task .modal-title');
