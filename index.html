@@ -1639,7 +1639,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[], themeProposals:[], sketchAssignments:[] };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[], themeProposals:[], sketchAssignments:[], sketchSubmissions:{} };
 window._me   = null;
 window._myRole = 'member';
 
@@ -3414,6 +3414,206 @@ function saveSketchSubmission() {
   if(status === '提出済み') toast('✅ 提出済みに更新しました！', 'complete');
   else toast('進捗を更新しました');
   closeOv('ov-sketch-submit');
+}
+
+// ═══════════════════════════════════════════════
+// SKETCH PAGE
+// ═══════════════════════════════════════════════
+
+function renderSketch() {
+  const isAdmin = window._myRole === 'admin';
+  const topbarActions = document.getElementById('sketch-topbar-actions');
+  if(topbarActions) topbarActions.style.display = isAdmin ? '' : 'none';
+  renderSketchCalendar();
+  renderSketchCurrentAssignment();
+  renderSketchMemberCards();
+}
+
+function renderSketchCalendar() {
+  const el = document.getElementById('sketch-yearly-calendar');
+  if(!el) return;
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const monthNames = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  el.innerHTML = Object.entries(SKETCH_THEMES).sort(([a],[b])=>parseInt(a)-parseInt(b)).map(([m, t]) => {
+    const mn = parseInt(m);
+    const isCurrent = mn === currentMonth;
+    const isPast = mn < currentMonth;
+    return `<div style="
+      background:${isCurrent ? 'linear-gradient(135deg,#eef2ff,#f5f3ff)' : isPast ? 'var(--surface2)' : 'var(--surface)'};
+      border:${isCurrent ? '2px solid var(--accent)' : '2px solid var(--border)'};
+      border-radius:var(--radius-sm);padding:12px;
+      box-shadow:${isCurrent ? 'var(--shadow-md)' : 'var(--shadow)'};
+      position:relative;opacity:${isPast ? '.7' : '1'};">
+      ${isCurrent ? `<div style="position:absolute;top:-1px;right:-1px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:0 var(--radius-sm) 0 8px;">今月</div>` : ''}
+      <div style="font-size:11px;color:${isCurrent?'var(--accent)':isPast?'var(--muted2)':'var(--muted)'};font-weight:600;margin-bottom:6px;">${monthNames[mn]}</div>
+      <div style="font-size:24px;margin-bottom:6px;">${t.emoji}</div>
+      <div style="font-size:13px;font-weight:${isCurrent?'700':'500'};color:${isCurrent?'var(--accent)':'var(--text)'};">${t.title}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSketchCurrentAssignment() {
+  const el = document.getElementById('sketch-current-assignment');
+  if(!el) return;
+  const isAdmin = window._myRole === 'admin';
+  const now = new Date();
+  const assignments = [...(window._data.sketchAssignments||[])].sort((a,b)=>b.createdAt-a.createdAt);
+  const current = assignments[0];
+
+  if(!current) {
+    el.innerHTML = isAdmin
+      ? `<div style="background:var(--surface2);border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;color:var(--muted);">
+          <div style="font-size:24px;margin-bottom:8px;">📋</div>
+          <div style="font-size:13px;margin-bottom:12px;">まだ今週の課題が設定されていません</div>
+          <button class="btn btn-primary btn-sm" onclick="openSketchAssignModal()">＋ 課題を設定する</button>
+        </div>`
+      : `<div style="background:var(--surface2);border-radius:var(--radius);padding:20px;text-align:center;color:var(--muted);font-size:13px;">今週の課題はまだ設定されていません。</div>`;
+    return;
+  }
+
+  const daysLeft = current.due ? Math.ceil((new Date(current.due) - now) / 86400000) : null;
+  const dueColor = daysLeft !== null ? (daysLeft <= 2 ? 'var(--red)' : daysLeft <= 5 ? 'var(--amber)' : 'var(--green-dark)') : 'var(--muted)';
+  const dueLabel = daysLeft !== null ? (daysLeft < 0 ? '締め切り過ぎ' : daysLeft === 0 ? '今日まで！' : `あと${daysLeft}日`) : '';
+
+  const subs = window._data.sketchSubmissions[current._key] || {};
+  const members = Object.values(window._data.users).filter(u => u.status === 'approved' || u.status === 'admin');
+  const participating = members.filter(m => {
+    const sub = subs[m.uid || Object.keys(window._data.users).find(k=>window._data.users[k]===m)];
+    return sub?.participating !== false;
+  });
+  const submitted = Object.values(subs).filter(s => s.status === '提出済み' && s.participating !== false).length;
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border:2px solid var(--accent-light);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-md);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:700;margin-bottom:6px;">${current.title}</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;">
+            ${current.due ? `<span style="color:${dueColor};font-weight:600;">⏰ ${current.due}（${dueLabel}）</span>` : ''}
+            <span style="color:var(--muted);">提出済み: <strong style="color:var(--green-dark);">${submitted}</strong> / ${participating.length}名参加中</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${current.link ? `<a href="${current.link}" target="_blank" class="btn btn-accent btn-sm">📂 課題を見る</a>` : ''}
+          ${isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="openSketchAssignModal('${current._key}')">編集</button>` : ''}
+          ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteSketchAssignment('${current._key}')">削除</button>` : ''}
+        </div>
+      </div>
+      ${current.note ? `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">${current.note}</div>` : ''}
+      <div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span>チーム提出状況</span>
+          <span>${participating.length ? Math.round(submitted/participating.length*100) : 0}%</span>
+        </div>
+        <div style="height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;background:linear-gradient(90deg,var(--green),#22c55e);border-radius:4px;width:${participating.length ? Math.round(submitted/participating.length*100) : 0}%;transition:width .5s;"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function deleteSketchAssignment(key) {
+  if(!confirm('この課題を削除しますか？')) return;
+  fbRemove('sketchAssignments/' + key);
+  toast('削除しました');
+}
+
+function renderSketchMemberCards() {
+  const el = document.getElementById('sketch-member-cards');
+  if(!el) return;
+  const assignments = [...(window._data.sketchAssignments||[])].sort((a,b)=>b.createdAt-a.createdAt);
+  const current = assignments[0];
+  if(!current) { el.innerHTML = '<div class="empty"><p>課題が設定されていません</p></div>'; return; }
+
+  const myId = window._me?.uid;
+  const memberEntries = Object.entries(window._data.users)
+    .filter(([,u]) => u.status === 'approved' || u.status === 'admin');
+
+  // Always include self
+  if(myId && !memberEntries.find(([k])=>k===myId)) {
+    const me = window._me;
+    memberEntries.push([myId, {uid:myId, name:me?.displayName||'あなた', photo:me?.photoURL||'', status:'approved'}]);
+  }
+
+  const members = memberEntries.map(([key, u]) => ({...u, _key: key}));
+  if(!members.length) { el.innerHTML = '<div class="empty"><p>メンバーがいません</p></div>'; return; }
+
+  const subs = window._data.sketchSubmissions[current._key] || {};
+
+  members.sort((a,b) => {
+    if(a._key === myId) return -1;
+    if(b._key === myId) return 1;
+    const sa = subs[a._key];
+    const sb = subs[b._key];
+    if(sa?.participating === false && sb?.participating !== false) return 1;
+    if(sb?.participating === false && sa?.participating !== false) return -1;
+    if(sa?.status === '提出済み' && sb?.status !== '提出済み') return -1;
+    if(sb?.status === '提出済み' && sa?.status !== '提出済み') return 1;
+    return 0;
+  });
+
+  el.innerHTML = members.map(u => {
+    const sub = subs[u._key] || {};
+    const isMe = u._key === myId;
+    const notParticipating = sub.participating === false;
+    const status = notParticipating ? '不参加' : (sub.status || '未着手');
+    const statusBg    = notParticipating ? 'var(--surface3)' : status === '提出済み' ? 'var(--green-bg)' : status === '取り組み中' ? 'var(--amber-bg)' : 'var(--surface2)';
+    const statusColor = notParticipating ? 'var(--muted2)' : status === '提出済み' ? 'var(--green-dark)' : status === '取り組み中' ? 'var(--amber)' : 'var(--muted)';
+    const statusIcon  = notParticipating ? '⏭' : status === '提出済み' ? '✅' : status === '取り組み中' ? '🖊️' : '⬜';
+    const avHTML = u.photo
+      ? `<img src="${u.photo}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid ${isMe?'var(--accent)':'var(--border)'};">`
+      : `<div style="width:42px;height:42px;border-radius:50%;background:${avBg(avColor(u.displayName||u.name||''))};color:${avColor(u.displayName||u.name||'')};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;border:2px solid ${isMe?'var(--accent)':'var(--border)'};">${initials(u.displayName||u.name||'?')}</div>`;
+
+    return `<div style="background:${notParticipating?'var(--surface2)':'var(--surface)'};border:2px solid ${isMe?'var(--accent)':status==='提出済み'?'rgba(34,197,94,.3)':'var(--border)'};border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);opacity:${notParticipating?.6:1};">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        ${avHTML}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${u.displayName||u.name||'—'}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:600;background:var(--accent-bg);padding:1px 6px;border-radius:4px;">自分</span>':''}</div>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${statusColor};background:${statusBg};padding:3px 10px;border-radius:20px;">${statusIcon} ${status}</span>
+        </div>
+      </div>
+      ${!notParticipating && sub.comment ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;background:var(--surface2);padding:10px 12px;border-radius:8px;margin-bottom:10px;border-left:3px solid var(--accent-light);">${sub.comment}</div>` : ''}
+      ${!notParticipating && sub.workLink ? `<div style="margin-bottom:10px;"><a href="${sub.workLink}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--accent);text-decoration:none;background:var(--accent-bg);padding:6px 12px;border-radius:20px;font-weight:600;">🎨 作品を見る</a></div>` : ''}
+      ${isMe ? `<div style="display:flex;gap:8px;">
+        ${!notParticipating ? `<button class="btn btn-primary btn-sm" onclick="openSketchSubmitModal('${current._key}')" style="flex:1;">✏️ 進捗を更新</button>` : `<button class="btn btn-accent btn-sm" onclick="toggleSketchParticipation('${current._key}',true)" style="flex:1;">参加する</button>`}
+        ${!notParticipating ? `<button class="btn btn-ghost btn-sm" onclick="toggleSketchParticipation('${current._key}',false)">スキップ</button>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleSketchParticipation(assignmentKey, participating) {
+  const myId = window._me?.uid;
+  if(!myId) return;
+  fbUpdate(`sketchSubmissions/${assignmentKey}/${myId}`, { participating, updatedAt: Date.now() });
+  if(participating) toast('課題に参加します！');
+  else toast('今回の課題をスキップしました');
+}
+
+function openSketchSubmitModal(assignmentKey) {
+  document.getElementById('sketch-submit-key').value = assignmentKey;
+  const myId = window._me?.uid;
+  const sub = (window._data.sketchSubmissions[assignmentKey]||{})[myId] || {};
+  const currentStatus = sub.status || '未着手';
+  document.getElementById('sketch-submit-status').value = currentStatus;
+  document.querySelectorAll('.sketch-status-btn').forEach(b => {
+    const isActive = b.textContent.trim().includes(currentStatus);
+    b.style.background = isActive ? 'var(--accent-bg)' : 'var(--surface2)';
+    b.style.color = isActive ? 'var(--accent)' : 'var(--muted)';
+    b.style.borderColor = isActive ? 'var(--accent)' : 'var(--border2)';
+  });
+  document.getElementById('sketch-submit-link').value    = sub.workLink || '';
+  document.getElementById('sketch-submit-comment').value = sub.comment  || '';
+  openOv('ov-sketch-submit');
+}
+
+function selectSketchStatus(status, el) {
+  document.getElementById('sketch-submit-status').value = status;
+  document.querySelectorAll('.sketch-status-btn').forEach(b => {
+    b.style.background = 'var(--surface2)'; b.style.color = 'var(--muted)'; b.style.borderColor = 'var(--border2)';
+  });
+  el.style.background = 'var(--accent-bg)'; el.style.color = 'var(--accent)'; el.style.borderColor = 'var(--accent)';
 }
 
 // ═══════════════════════════════════════════════
