@@ -3357,23 +3357,48 @@ function deleteProposal(key) {
 // SKETCH ASSIGNMENTS
 // ═══════════════════════════════════════════════
 
-function openSketchModal(key) {
-  const s = key ? (window._data.sketchAssignments||[]).find(x=>x._key===key) : null;
-  document.getElementById('sketch-modal-ttl').textContent = key ? '課題を編集' : 'スケッチ課題を作成';
-  document.getElementById('sketch-title').value = s?.title || '';
-  document.getElementById('sketch-link').value  = s?.link  || '';
-  document.getElementById('sketch-due').value   = s?.due   || '';
-  document.getElementById('sketch-note').value  = s?.note  || '';
-  // Set default due = next sunday
-  if(!s) {
+function openSketchAssignModal(key) {
+  _editSketchKey = key || null;
+  const a = key ? (window._data.sketchAssignments||[]).find(x=>x._key===key) : null;
+  const ttl = document.getElementById('sketch-assign-ttl');
+  if(ttl) ttl.textContent = key ? '課題を編集' : '今週のスケッチ課題を設定';
+  document.getElementById('sketch-assign-title').value = a?.title || '';
+  document.getElementById('sketch-assign-link').value  = a?.link  || '';
+  document.getElementById('sketch-assign-due').value   = a?.due   || '';
+  document.getElementById('sketch-assign-note').value  = a?.note  || '';
+  // Default due = next Sunday
+  if(!a?.due) {
     const d = new Date();
-    const daysUntilSun = (7 - d.getDay()) % 7 || 7;
-    d.setDate(d.getDate() + daysUntilSun);
-    document.getElementById('sketch-due').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    d.setDate(d.getDate() + (7 - d.getDay()));
+    document.getElementById('sketch-assign-due').value =
+      d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
-  // Store editing key
-  document.getElementById('ov-sketch').dataset.editKey = key || '';
-  openOv('ov-sketch');
+  openOv('ov-sketch-assign');
+}
+
+// alias for backward compatibility
+function openSketchModal(key) { openSketchAssignModal(key); }
+
+let _editSketchKey = null;
+function saveSketchAssignment() {
+  const title = document.getElementById('sketch-assign-title').value.trim();
+  if(!title) { toast('課題タイトルを入力してください'); return; }
+  const obj = {
+    title,
+    link: document.getElementById('sketch-assign-link').value.trim(),
+    due:  document.getElementById('sketch-assign-due').value,
+    note: document.getElementById('sketch-assign-note').value.trim(),
+    createdBy: window._me?.uid||'',
+    createdAt: Date.now()
+  };
+  if(_editSketchKey) {
+    fbUpdate('sketchAssignments/' + _editSketchKey, obj);
+    toast('課題を更新しました');
+  } else {
+    fbPush('sketchAssignments', obj);
+    toast('今週の課題を設定しました！');
+  }
+  closeOv('ov-sketch-assign');
 }
 
 function saveSketchSubmission() {
