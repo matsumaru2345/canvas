@@ -1618,26 +1618,7 @@ textarea.fi{resize:vertical;min-height:70px;}
   </div>
 </div>
 
-<!-- ── TEMPLATE ASSIGN MODAL ── -->
-<div class="overlay" id="ov-assign-template">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-title">テンプレタスクを割り当て</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">選択したメンバーに、このイベントのテンプレタスクを一括コピーします。</div>
-    <div class="fg">
-      <label class="fl">割り当てるメンバー</label>
-      <div id="assign-member-list" style="display:flex;gap:7px;flex-wrap:wrap;padding:6px 0;"></div>
-    </div>
-    <div class="fg">
-      <label class="fl">テンプレタスク確認</label>
-      <div id="assign-template-list" style="background:var(--surface2);border-radius:8px;padding:10px;"></div>
-    </div>
-    <input type="hidden" id="assign-event-key">
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeOv('ov-assign-template')">キャンセル</button>
-      <button class="btn btn-primary" onclick="executeTemplateAssign()">割り当て実行</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- ── DETAIL MODAL ── -->
 <div class="overlay" id="ov-detail">
@@ -2527,9 +2508,7 @@ function openEvDetail(key){
           <div id="ev-tk-list">${renderEvTaskList(tasks.filter(t=>!t.isTemplate),myId,'all')}</div>`
         : '<span style="color:var(--muted);font-size:13px;">タスクなし</span>'
     },
-    { id:'templates', label:`テンプレ（${tasks.filter(t=>t.isTemplate).length}件）`,
-      content: buildTemplateTabContent(key, tasks.filter(t=>t.isTemplate), e)
-    }
+
   ];
 
   document.getElementById('detail-body').innerHTML=`
