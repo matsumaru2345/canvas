@@ -2512,6 +2512,16 @@ function saveTask(){
 }
 
 // ─── Event detail ───
+function buildTemplateTabContent(evKey, templates, e) {
+  if(!templates.length) return '<span style="color:var(--muted);font-size:13px;">テンプレなし</span>';
+  return `<div style="margin-bottom:10px;">
+    ${templates.map(t=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;margin-bottom:5px;font-size:13px;">
+      <span class="pdot" style="background:${PRI[t.priority]?.color||'#888'}"></span>${t.name}
+    </div>`).join('')}
+    <button class="btn btn-accent btn-sm" style="margin-top:8px;" onclick="openAssignTemplateModal('${evKey}')">メンバーに割り当て</button>
+  </div>`;
+}
+
 function openEvDetail(key){
   const e=window._data.events.find(x=>x._key===key); if(!e) return;
   const c=TYPES[e.type]||TYPES['その他'];
