@@ -1084,14 +1084,14 @@ textarea.fi{resize:vertical;min-height:70px;}
       <div class="topbar">
         <span class="topbar-title">ノート</span>
         <div class="topbar-actions">
-          <button class="btn btn-primary" onclick="openNoteModal()">＋ スレッドを作成</button>
+          <button class="btn btn-primary" onclick="openNoteModal()">＋ ノートを作成</button>
         </div>
       </div>
       <div style="padding:20px">
         <!-- Search bar -->
         <div style="position:relative;margin-bottom:14px;">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
-          <input class="fi" id="notes-search" placeholder="スレッドを検索…" oninput="renderNotes()" style="padding-left:32px;font-size:13px;">
+          <input class="fi" id="notes-search" placeholder="ノートを検索…" oninput="renderNotes()" style="padding-left:32px;font-size:13px;">
         </div>
         <!-- Filter chips -->
         <div class="filter-bar" id="notes-filter-bar">
@@ -1321,7 +1321,7 @@ textarea.fi{resize:vertical;min-height:70px;}
     <div class="fg"><label class="fl">参加メンバー</label>
       <div id="meeting-members-picker" style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;"></div>
     </div>
-    <div class="fg"><label class="fl">議事録リンク（ノートのスレッドへのリンク等、省略可）</label>
+    <div class="fg"><label class="fl">議事録リンク（ノートのノートへのリンク等、省略可）</label>
       <input class="fi" id="meeting-notes-link" placeholder="例：このアプリのノートのタイトルを入力"></div>
     <div class="fg"><label class="fl">次回の日程（省略可）</label><input type="date" class="fi" id="meeting-next-date"></div>
     <div class="modal-actions">
@@ -1334,7 +1334,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <!-- ── NOTE MODAL ── -->
 <div class="overlay" id="ov-note">
   <div class="modal" style="max-width:500px;">
-    <div class="modal-title" id="note-modal-ttl">新しいスレッドを作成</div>
+    <div class="modal-title" id="note-modal-ttl">ノートを作成</div>
     <div class="fg"><label class="fl">タイトル</label><input class="fi" id="note-title" placeholder="例：3月集まりの議事録、今週のテーマ案"></div>
     <div class="fg">
       <label class="fl">カテゴリ</label>
@@ -2882,8 +2882,8 @@ function renderNotes() {
 
   if(!notes.length) {
     list.innerHTML = query
-      ? `<div class="empty"><div class="empty-icon">🔍</div><p>「${query}」に一致するスレッドがありません</p></div>`
-      : empty('まだスレッドがありません。「＋ スレッドを作成」で始めよう！');
+      ? `<div class="empty"><div class="empty-icon">🔍</div><p>「${query}」に一致するノートがありません</p></div>`
+      : empty('まだノートがありません。「＋ ノートを作成」で始めよう！');
     return;
   }
 
@@ -3139,7 +3139,7 @@ function renderNoteDetailModal(key) {
   if(_noteEditMode) {
     document.getElementById('note-detail-body').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <h3 style="font-size:14px;font-weight:500;">スレッドを編集</h3>
+        <h3 style="font-size:14px;font-weight:500;">ノートを編集</h3>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-ghost btn-sm" onclick="_noteEditMode=false;renderNoteDetailModal('${key}')">キャンセル</button>
           <button class="btn btn-primary btn-sm" onclick="updateNote('${key}')">保存</button>
@@ -3264,12 +3264,12 @@ function saveNote() {
   const uid = window._me?.uid||'unknown';
   const now = Date.now();
   fbPush('notes', {title, category, body, noteDate, members, createdBy:uid, createdAt:now, updatedAt:now});
-  toast('スレッドを作成しました！');
+  toast('ノートを作成しました！');
   closeOv('ov-note');
 }
 
 function deleteNote(key) {
-  if(!confirm('このスレッドを削除しますか？投稿もすべて削除されます。')) return;
+  if(!confirm('このノートを削除しますか？')) return;
   fbRemove(`notes/${key}`);
   fbRemove(`notePosts/${key}`);
   _noteEditMode = false;
