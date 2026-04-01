@@ -144,6 +144,7 @@ function initListeners() {
   onValue(ref(db,'comments'),    snap => { window._data.comments=[]; snap.forEach(c=>window._data.comments.push({_key:c.key,...c.val()})); });
   onValue(ref(db,'reactions'),   snap => { window._data.reactions={}; snap.forEach(c=>window._data.reactions[c.key]=c.val()); });
   onValue(ref(db,'invites'),     snap => { window._data.invites={}; snap.forEach(c=>window._data.invites[c.key]=c.val()); });
+  onValue(ref(db,'meetings'), snap => { window._data.meetings=[]; snap.forEach(c=>window._data.meetings.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'sketchAssignments'), snap => { window._data.sketchAssignments=[]; snap.forEach(c=>window._data.sketchAssignments.push({_key:c.key,...c.val()})); renderAll(); });
   onValue(ref(db,'sketchSubmissions'), snap => { window._data.sketchSubmissions={}; snap.forEach(c=>window._data.sketchSubmissions[c.key]=c.val()); renderAll(); });
   onValue(ref(db,'themeProposals'), snap => { window._data.themeProposals=[]; snap.forEach(c=>window._data.themeProposals.push({_key:c.key,...c.val()})); scheduleRender(); });
@@ -942,6 +943,10 @@ textarea.fi{resize:vertical;min-height:70px;}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>
         <span>週間ワーク</span>
       </button>
+      <button class="nav-item" onclick="showPage('meetings')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/><circle cx="5" cy="11" r="1"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="11" r="1"/></svg>
+        <span>定例</span>
+      </button>
       <button class="nav-item" onclick="showPage('notes')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
         <span>ノート</span>
@@ -1053,6 +1058,25 @@ textarea.fi{resize:vertical;min-height:70px;}
         <button class="btn btn-primary" onclick="openEvModal()">＋ イベント追加</button>
       </div>
       <div style="padding:26px" id="schedule"></div>
+    </div>
+
+    <!-- Meetings -->
+    <div id="page-meetings" class="page">
+      <div class="topbar">
+        <span class="topbar-title">定例</span>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openMeetingModal()">＋ 定例を追加</button>
+        </div>
+      </div>
+      <div style="padding:16px 16px 20px;">
+        <!-- 次回の定例 -->
+        <div id="meetings-next" style="margin-bottom:20px;"></div>
+        <!-- 過去の定例 -->
+        <div>
+          <div style="font-family:var(--font-s);font-size:13px;font-weight:600;margin-bottom:12px;">定例一覧</div>
+          <div id="meetings-list"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Notes -->
@@ -1259,6 +1283,10 @@ textarea.fi{resize:vertical;min-height:70px;}
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z"/></svg>
       習慣
     </button>
+    <button class="bn-item" id="bn-meetings" onclick="showPage('meetings')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg>
+      定例
+    </button>
     <button class="bn-item" id="bn-notes" onclick="showPage('notes')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="2"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
       ノート
@@ -1275,6 +1303,32 @@ textarea.fi{resize:vertical;min-height:70px;}
   </nav>
 
 
+</div>
+
+<!-- ── MEETING MODAL ── -->
+<div class="overlay" id="ov-meeting">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title" id="meeting-modal-ttl">定例を追加</div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">日付</label><input type="date" class="fi" id="meeting-date"></div>
+      <div class="fg"><label class="fl">時間</label><input type="time" class="fi" id="meeting-time" value="19:00"></div>
+    </div>
+    <div class="fg"><label class="fl">場所・URL</label><input class="fi" id="meeting-location" placeholder="例：Google Meet / https://meet.google.com/xxx"></div>
+    <div class="fg">
+      <label class="fl">アジェンダ（議題）</label>
+      <textarea class="fi" id="meeting-agenda" placeholder="例：&#10;1. コンペ進捗確認&#10;2. スケッチ提出確認&#10;3. 次回テーマ決め" style="min-height:100px;"></textarea>
+    </div>
+    <div class="fg"><label class="fl">参加メンバー</label>
+      <div id="meeting-members-picker" style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;"></div>
+    </div>
+    <div class="fg"><label class="fl">議事録リンク（ノートのスレッドへのリンク等、省略可）</label>
+      <input class="fi" id="meeting-notes-link" placeholder="例：このアプリのノートのタイトルを入力"></div>
+    <div class="fg"><label class="fl">次回の日程（省略可）</label><input type="date" class="fi" id="meeting-next-date"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-meeting')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMeeting()">保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── NOTE MODAL ── -->
@@ -1628,7 +1682,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 <div id="toast"></div>
 
 <script>
-window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[], themeProposals:[], sketchAssignments:[], sketchSubmissions:{} };
+window._data = { events:[], tasks:[], users:{}, comments:[], reactions:{}, invites:{}, weeklyGoals:[], weeklyLogs:{}, notes:[], notePosts:{}, habitThemes:[], habitShares:[], themeProposals:[], sketchAssignments:[], sketchSubmissions:{}, meetings:[] };
 window._me   = null;
 window._myRole = 'member';
 
@@ -1738,6 +1792,7 @@ function renderAll(){
   if(_activePage==='notes')     renderNotes();
   if(_activePage==='habit')     renderHabit();
   if(_activePage==='sketch')    renderSketch();
+  if(_activePage==='meetings')  renderMeetings();
   renderNotifs();
 }
 
@@ -3404,6 +3459,156 @@ function saveSketchSubmission() {
 }
 
 // ═══════════════════════════════════════════════
+// MEETINGS (定例)
+// ═══════════════════════════════════════════════
+let _editMeetingKey = null;
+
+function renderMeetings() {
+  const meetings = [...(window._data.meetings||[])].sort((a,b)=>new Date(b.date+' '+(b.time||'00:00'))-new Date(a.date+' '+(a.time||'00:00')));
+  const now = new Date();
+  const upcoming = meetings.filter(m => new Date(m.date + 'T' + (m.time||'00:00')) >= now);
+  const past     = meetings.filter(m => new Date(m.date + 'T' + (m.time||'00:00')) <  now);
+
+  // 次回の定例
+  const nextEl = document.getElementById('meetings-next');
+  if(nextEl) {
+    const next = upcoming[0];
+    if(next) {
+      const d = new Date(next.date + 'T' + (next.time||'00:00'));
+      const daysLeft = Math.ceil((d - now) / 86400000);
+      nextEl.innerHTML = `
+        <div style="background:linear-gradient(135deg,#eef2ff,#f5f3ff);border:2px solid var(--accent-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-md);">
+          <div style="font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.06em;margin-bottom:8px;">📅 次回の定例</div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:20px;font-weight:700;margin-bottom:4px;">${next.date} ${next.time||''}</div>
+              <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:8px;">あと${daysLeft}日</div>
+              ${next.location ? `<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">📍 ${next.location.startsWith('http') ? `<a href="${next.location}" target="_blank" style="color:var(--accent);">${next.location}</a>` : next.location}</div>` : ''}
+              ${next.agenda ? `<div style="font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.8;background:rgba(255,255,255,.6);border-radius:8px;padding:10px 12px;margin-top:8px;">${next.agenda}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-ghost btn-sm" onclick="openMeetingModal('${next._key}')">編集</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteMeeting('${next._key}')">削除</button>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      nextEl.innerHTML = `<div style="background:var(--surface2);border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;color:var(--muted);">
+        <div style="font-size:24px;margin-bottom:8px;">📅</div>
+        <div style="font-size:13px;margin-bottom:12px;">次回の定例が設定されていません</div>
+        <button class="btn btn-primary btn-sm" onclick="openMeetingModal()">＋ 定例を追加</button>
+      </div>`;
+    }
+  }
+
+  // 定例一覧
+  const listEl = document.getElementById('meetings-list');
+  if(!listEl) return;
+
+  if(!meetings.length) {
+    listEl.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>まだ定例がありません</p></div>';
+    return;
+  }
+
+  const renderCard = (m, isPast) => {
+    const d = new Date(m.date + 'T' + (m.time||'00:00'));
+    const members = window._data.users;
+    return `<div style="background:${isPast?'var(--surface2)':'var(--surface)'};border:2px solid ${isPast?'var(--border)':'var(--accent-light)'};border-radius:var(--radius);padding:16px;margin-bottom:10px;opacity:${isPast?.8:1};">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;">${m.date} ${m.time||''} ${isPast?'<span style="font-size:10px;color:var(--muted);background:var(--surface3);padding:2px 7px;border-radius:4px;margin-left:4px;">終了</span>':''}</div>
+          ${m.location ? `<div style="font-size:12px;color:var(--muted);margin-top:3px;">📍 ${m.location.startsWith('http') ? `<a href="${m.location}" target="_blank" style="color:var(--accent);">${m.location}</a>` : m.location}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm" onclick="openMeetingModal('${m._key}')">編集</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMeeting('${m._key}')">削除</button>
+        </div>
+      </div>
+      ${m.agenda ? `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.8;margin-bottom:10px;border-left:3px solid var(--accent-light);">${m.agenda}</div>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        ${m.members?.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;">${m.members.map(uid=>{const u=members[uid];return u?.photo?`<img src="${u.photo}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:2px solid var(--surface);" title="${u.displayName||u.name}">`: `<div style="width:24px;height:24px;border-radius:50%;background:${avBg(avColor(u?.name||''))};color:${avColor(u?.name||'')};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;" title="${u?.name||uid}">${initials(u?.name||'?')}</div>`;}).join('')}</div>` : ''}
+        ${m.nextDate ? `<div style="font-size:11px;color:var(--muted);">次回: <strong>${m.nextDate}</strong></div>` : ''}
+        ${m.notesLink ? `<div style="font-size:11px;"><a href="#" onclick="showPage('notes');return false;" style="color:var(--accent);">📝 議事録を見る</a></div>` : ''}
+      </div>
+    </div>`;
+  };
+
+  // 今後と過去に分けて表示
+  let html = '';
+  if(upcoming.length > 1) {
+    html += `<div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">予定</div>`;
+    html += upcoming.slice(1).map(m => renderCard(m, false)).join('');
+  }
+  if(past.length) {
+    html += `<div style="font-size:11px;color:var(--muted);font-weight:600;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">過去の定例</div>`;
+    html += past.map(m => renderCard(m, true)).join('');
+  }
+  listEl.innerHTML = html || '';
+}
+
+function openMeetingModal(key) {
+  _editMeetingKey = key || null;
+  const m = key ? (window._data.meetings||[]).find(x=>x._key===key) : null;
+  document.getElementById('meeting-modal-ttl').textContent = key ? '定例を編集' : '定例を追加';
+
+  const today = new Date();
+  document.getElementById('meeting-date').value = m?.date || (today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0'));
+  document.getElementById('meeting-time').value = m?.time || '19:00';
+  document.getElementById('meeting-location').value = m?.location || '';
+  document.getElementById('meeting-agenda').value = m?.agenda || '';
+  document.getElementById('meeting-notes-link').value = m?.notesLink || '';
+  document.getElementById('meeting-next-date').value = m?.nextDate || '';
+
+  // Member picker
+  const picker = document.getElementById('meeting-members-picker');
+  const users = window._data.users;
+  const selectedMembers = m?.members || Object.keys(users);
+  picker.innerHTML = Object.entries(users)
+    .filter(([,u])=>u.status==='approved'||u.status==='admin')
+    .map(([uid,u])=>{
+      const checked = selectedMembers.includes(uid);
+      return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;background:${checked?'var(--accent-bg)':'var(--surface2)'};border:1px solid ${checked?'var(--accent)':'var(--border2)'};border-radius:20px;padding:4px 10px;font-size:12px;transition:all .12s;">
+        <input type="checkbox" value="${uid}" ${checked?'checked':''} style="accent-color:var(--accent);" onchange="this.parentElement.style.background=this.checked?'var(--accent-bg)':'var(--surface2)';this.parentElement.style.borderColor=this.checked?'var(--accent)':'var(--border2)'">
+        ${u?.photo?`<img src="${u.photo}" style="width:16px;height:16px;border-radius:50%;">`:''}<span>${u?.displayName||u?.name||uid}</span>
+      </label>`;
+    }).join('');
+
+  openOv('ov-meeting');
+}
+
+function saveMeeting() {
+  const date = document.getElementById('meeting-date').value;
+  if(!date){ toast('日付を入力してください'); return; }
+  const members = [...document.querySelectorAll('#meeting-members-picker input:checked')].map(i=>i.value);
+  const obj = {
+    date,
+    time:      document.getElementById('meeting-time').value,
+    location:  document.getElementById('meeting-location').value.trim(),
+    agenda:    document.getElementById('meeting-agenda').value.trim(),
+    notesLink: document.getElementById('meeting-notes-link').value.trim(),
+    nextDate:  document.getElementById('meeting-next-date').value,
+    members,
+    createdBy: window._me?.uid||'',
+    updatedAt: Date.now()
+  };
+  if(_editMeetingKey) {
+    fbUpdate('meetings/' + _editMeetingKey, obj);
+    toast('定例を更新しました');
+  } else {
+    obj.createdAt = Date.now();
+    fbPush('meetings', obj);
+    toast('定例を追加しました！');
+  }
+  closeOv('ov-meeting');
+}
+
+function deleteMeeting(key) {
+  if(!confirm('この定例を削除しますか？')) return;
+  fbRemove('meetings/' + key);
+  toast('削除しました');
+}
+
+// ═══════════════════════════════════════════════
 // SKETCH PAGE
 // ═══════════════════════════════════════════════
 
@@ -4429,12 +4634,12 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={dash:0,events:1,tasks:2,schedule:3,sketch:4,habit:5,weekly:6,notes:7,usermgmt:8}[id];
+  const idx={dash:0,events:1,tasks:2,schedule:3,sketch:4,habit:5,weekly:6,meetings:7,notes:8,usermgmt:9}[id];
   const navItems=document.querySelectorAll('.nav-item');
   if(navItems[idx]) navItems[idx].classList.add('active');
   // sync bottom nav
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',sketch:'bn-sketch',habit:'bn-habit',notes:'bn-notes'};
+  const bnMap={dash:'bn-dash',events:'bn-events',tasks:'bn-tasks',schedule:'bn-schedule',sketch:'bn-sketch',habit:'bn-habit',meetings:'bn-meetings',notes:'bn-notes'};
   if(bnMap[id]) document.getElementById(bnMap[id])?.classList.add('active');
   _activePage=id; renderAll();
 }
