@@ -145,8 +145,16 @@ function initListeners() {
   onValue(ref(db,'reactions'),   snap => { window._data.reactions={}; snap.forEach(c=>window._data.reactions[c.key]=c.val()); });
   onValue(ref(db,'invites'),     snap => { window._data.invites={}; snap.forEach(c=>window._data.invites[c.key]=c.val()); });
   onValue(ref(db,'meetings'), snap => { window._data.meetings=[]; snap.forEach(c=>window._data.meetings.push({_key:c.key,...c.val()})); scheduleRender(); });
-  onValue(ref(db,'sketchAssignments'), snap => { window._data.sketchAssignments=[]; snap.forEach(c=>window._data.sketchAssignments.push({_key:c.key,...c.val()})); renderAll(); });
-  onValue(ref(db,'sketchSubmissions'), snap => { window._data.sketchSubmissions={}; snap.forEach(c=>window._data.sketchSubmissions[c.key]=c.val()); renderAll(); });
+  onValue(ref(db,'sketchAssignments'), snap => {
+    window._data.sketchAssignments = [];
+    if(snap.exists()) snap.forEach(c=>{ const v=c.val(); if(v) window._data.sketchAssignments.push({_key:c.key,...v}); });
+    scheduleRender();
+  });
+  onValue(ref(db,'sketchSubmissions'), snap => {
+    window._data.sketchSubmissions = {};
+    if(snap.exists()) snap.forEach(c=>{ window._data.sketchSubmissions[c.key]=c.val(); });
+    scheduleRender();
+  });
   onValue(ref(db,'themeProposals'), snap => { window._data.themeProposals=[]; snap.forEach(c=>window._data.themeProposals.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'habitThemes'), snap => { window._data.habitThemes=[]; snap.forEach(c=>window._data.habitThemes.push({_key:c.key,...c.val()})); scheduleRender(); });
   onValue(ref(db,'habitShares'), snap => { window._data.habitShares=[]; snap.forEach(c=>window._data.habitShares.push({_key:c.key,...c.val()})); scheduleRender(); });
@@ -904,6 +912,7 @@ textarea.fi{resize:vertical;min-height:70px;}
 
 <!-- ── App ── -->
 <div id="app">
+<div id="debug-counts" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);color:#0f0;font-size:11px;font-family:monospace;padding:4px 10px;z-index:9999;text-align:center;"></div>
   <canvas id="confetti-canvas"></canvas>
 
   <!-- Sidebar -->
@@ -1764,6 +1773,12 @@ function launchConfetti(){
 
 // ─── RENDER ───
 function renderAll(){
+  // Debug counts
+  const d = window._data;
+  const debugEl = document.getElementById('debug-counts');
+  if(debugEl) {
+    debugEl.textContent = `events:${d.events?.length||0} tasks:${d.tasks?.length||0} notes:${d.notes?.length||0} sketch:${d.sketchAssignments?.length||0} meetings:${d.meetings?.length||0}`;
+  }
   // Mobile user bar
   const mub = document.getElementById('mobile-user-bar');
   if(mub && window._me) {
@@ -3616,6 +3631,9 @@ function renderSketch() {
   const isAdmin = window._myRole === 'admin';
   const topbarActions = document.getElementById('sketch-topbar-actions');
   if(topbarActions) topbarActions.style.display = isAdmin ? '' : 'none';
+  // Debug
+  const ttl = document.querySelector('#page-sketch .topbar-title');
+  if(ttl) ttl.textContent = `スケッチ (課題${(window._data.sketchAssignments||[]).length}件)`;
   renderSketchCalendar();
   renderSketchCurrentAssignment();
   renderSketchMemberCards();
