@@ -3639,12 +3639,54 @@ function renderSketch() {
   const isAdmin = window._myRole === 'admin';
   const topbarActions = document.getElementById('sketch-topbar-actions');
   if(topbarActions) topbarActions.style.display = isAdmin ? '' : 'none';
-  // Debug
-  const ttl = document.querySelector('#page-sketch .topbar-title');
-  if(ttl) ttl.textContent = `スケッチ (課題${(window._data.sketchAssignments||[]).length}件)`;
+  const assignments = [...(window._data.sketchAssignments||[])].sort((a,b)=>b.createdAt-a.createdAt);
+  const ttl = document.getElementById('sketch-topbar-title') || document.querySelector('#page-sketch .topbar-title');
+  if(ttl) ttl.textContent = assignments.length ? `スケッチ（課題${assignments.length}件）` : 'スケッチ';
   renderSketchCalendar();
   renderSketchCurrentAssignment();
   renderSketchMemberCards();
+  renderSketchPastAssignments();
+}
+
+function renderSketchPastAssignments() {
+  const pastEl = document.getElementById('sketch-past-assignments');
+  const pastSection = document.getElementById('sketch-past-section');
+  if(!pastEl) return;
+  const assignments = [...(window._data.sketchAssignments||[])].sort((a,b)=>b.createdAt-a.createdAt);
+  const past = assignments.slice(1);
+  const isAdmin = window._myRole === 'admin';
+  const myId = window._me?.uid;
+
+  if(pastSection) pastSection.style.display = past.length ? '' : 'none';
+  if(!past.length) { pastEl.innerHTML = ''; return; }
+
+  pastEl.innerHTML = past.map(a => {
+    const subs = window._data.sketchSubmissions[a._key] || {};
+    const mySub = subs[myId] || {};
+    const myStatus = mySub.participating === false ? '不参加' : (mySub.status || '未着手');
+    const statusColor = myStatus==='提出済み' ? 'var(--green-dark)' : myStatus==='取り組み中' ? 'var(--amber)' : myStatus==='不参加' ? 'var(--muted2)' : 'var(--muted)';
+    const statusIcon  = myStatus==='提出済み' ? '✅' : myStatus==='取り組み中' ? '🖊️' : myStatus==='不参加' ? '⏭' : '⬜';
+    const daysAgo = a.due ? Math.floor((new Date() - new Date(a.due)) / 86400000) : null;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:3px;">${a.title}</div>
+          <div style="font-size:11px;color:var(--muted);">
+            ${a.due ? `📅 ${a.due}` : ''}
+            ${daysAgo!==null && daysAgo>0 ? `（${daysAgo}日前）` : ''}
+            &nbsp;自分: <span style="color:${statusColor};font-weight:600;">${statusIcon} ${myStatus}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${a.link ? `<a href="${a.link}" target="_blank" class="btn btn-ghost btn-sm">📂 課題</a>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="openSketchSubmitModal('${a._key}')">更新</button>
+          ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteSketchAssignment('${a._key}')">削除</button>` : ''}
+        </div>
+      </div>
+      ${mySub.comment ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;background:var(--surface2);padding:8px 10px;border-radius:8px;border-left:3px solid var(--accent-light);">${mySub.comment}</div>` : ''}
+      ${mySub.workLink ? `<div style="margin-top:8px;"><a href="${mySub.workLink}" target="_blank" style="font-size:12px;color:var(--accent);background:var(--accent-bg);padding:4px 12px;border-radius:20px;text-decoration:none;font-weight:600;">🎨 自分の作品を見る</a></div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function renderSketchCalendar() {
